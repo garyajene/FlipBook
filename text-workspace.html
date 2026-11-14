@@ -9,10 +9,49 @@ function remember(){const sel=window.getSelection();if(sel.rangeCount&&paper.con
 paper.addEventListener('mouseup',remember);paper.addEventListener('keyup',remember);
 function restore(){paper.focus();const sel=window.getSelection();if(savedRange&&paper.contains(savedRange.commonAncestorContainer)){sel.removeAllRanges();sel.addRange(savedRange);return savedRange}return null}
 function validUrl(v){try{const u=new URL(v);return ['https:','http:'].includes(u.protocol)?u.href:null}catch(e){return null}}
-function formatSelected(style,value){const r=restore();if(!r||r.collapsed){$('status').textContent='Highlight some text first.';return}const span=document.createElement('span');span.style[style]=value;try{r.surroundContents(span)}catch(e){const frag=r.extractContents();span.append(frag);r.insertNode(span)}savedRange=null;$('status').textContent='Formatted selected text.'}
+function formatSelected(style,value){
+const r=restore();if(!r||r.collapsed){$('status').textContent='Highlight some text first.';return}
+let target=r.startContainer.nodeType===3?r.startContainer.parentElement:r.startContainer;
+if(target&&target.tagName==='SPAN'&&target.dataset.formatSelection==='yes'&&r.toString()===target.textContent){target.style[style]=value}
+else{const span=document.createElement('span');span.dataset.formatSelection='yes';span.style[style]=value;try{r.surroundContents(span)}catch(e){span.append(r.extractContents());r.insertNode(span)}target=span}
+const selection=window.getSelection(),next=document.createRange();next.selectNodeContents(target);selection.removeAllRanges();selection.addRange(next);savedRange=next.cloneRange();
+$('status').textContent='Formatted selected text.'
+}
+function extractParagraphs(items){
+const lines=[];let line=null;
+for(const it of items){
+if(!it.str)continue;
+const y=it.transform[5],x=it.transform[4],font=Math.abs(it.transform[3])||12;
+if(!line||Math.abs(y-line.y)>Math.max(2,font*0.25)){
+line={y,font,x,end:x,parts:[],height:it.height||font};lines.push(line)
+}
+const previous=line.parts.at(-1);
+if(previous){
+const gap=x-previous.end;
+const prev=previous.text,wordSplit=/^[a-z]$/i.test(prev)&&/^[a-z]/i.test(it.str);
+const addSpace=gap>Math.max(font*0.16,1.5)&&!wordSplit&&!/^\s/.test(it.str)&&! /\s$/.test(prev);
+if(addSpace)line.parts.push({text:' ',end:x});
+}
+line.parts.push({text:it.str,end:x+(it.width||0)});
+line.end=Math.max(line.end,x+(it.width||0));line.font=Math.max(line.font,font);
+}
+const paras=[];let paragraph='',previous=null;
+for(const l of lines){
+const text=l.parts.map(p=>p.text).join('').replace(/\s+/g,' ').trim();if(!text)continue;
+if(previous){
+const gap=Math.abs(previous.y-l.y),breakParagraph=gap>Math.max(previous.font,l.font)*1.65;
+if(breakParagraph){paras.push(paragraph);paragraph=text}
+else if(paragraph.endsWith('-')&&/^[a-z]/.test(text))paragraph=paragraph.slice(0,-1)+text;
+else paragraph+=' '+text;
+}else paragraph=text;
+previous=l
+}
+if(paragraph)paras.push(paragraph);
+return paras.join('\n\n')
+}
 try{doc=await pdfjs.getDocument('/pdf/'+id).promise;for(let i=1;i<=doc.numPages;i++){const o=document.createElement('option');o.value=i;o.textContent='Page '+i;$('page').append(o)}await show(1)}catch(e){$('status').textContent='Unable to read PDF: '+e.message}
 async function show(n){if(!doc)return;if(current&&$('paper').dataset.loaded)drafts.set(current,$('paper').innerHTML);savedRange=null;current=n;$('page').value=n;
-if(drafts.has(n)){$('paper').innerHTML=drafts.get(n)}else{const p=await doc.getPage(n),data=await p.getTextContent();const lines=[];let lastY=null,line='';for(const item of data.items){if(!item.str)continue;const y=Math.round(item.transform[5]);if(lastY!==null&&Math.abs(y-lastY)>3){lines.push(line.trim());line=''}line+=(line?' ':'')+item.str;lastY=y;if(item.hasEOL){lines.push(line.trim());line='';lastY=null}}if(line)lines.push(line.trim());$('paper').textContent=lines.join('\n')} $('paper').dataset.loaded='1';$('status').textContent='Editing page '+n+' (draft only)'}
+if(drafts.has(n)){$('paper').innerHTML=drafts.get(n)}else{const p=await doc.getPage(n),data=await p.getTextContent();$('paper').textContent=extractParagraphs(data.items)} $('paper').dataset.loaded='1';$('status').textContent='Editing page '+n+' (draft only)'}
 $('page').onchange=()=>show(Number($('page').value));$('font').onchange=()=>formatSelected('fontFamily',$('font').value);$('size').onchange=()=>formatSelected('fontSize',$('size').value+'px');
 $('bold').onclick=()=>{ $('paper').focus();document.execCommand('bold')};$('italic').onclick=()=>{$('paper').focus();document.execCommand('italic')};
 $('link').onclick=()=>{const url=validUrl($('linkUrl').value),r=restore();if(!url){$('status').textContent='Enter a valid link starting with https://';return}if(!r||r.collapsed){$('status').textContent='Highlight the words to link first.';return}const link=document.createElement('a');link.href=url;link.target='_blank';link.rel='noopener noreferrer';try{r.surroundContents(link)}catch(e){link.append(r.extractContents());r.insertNode(link)}savedRange=null;$('status').textContent='Link added to highlighted words.'};
