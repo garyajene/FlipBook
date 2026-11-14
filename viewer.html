@@ -19,6 +19,7 @@
 <div class="settings"><label><input id="curl" type="checkbox" checked> 3D page curl</label><label><input id="sound" type="checkbox" checked> Page-turn sound</label></div>
 </main><div id="videoModal" class="video-modal"><div class="video-box"><button id="closeVideo">Close ✕</button><div id="videoFrame"></div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="/draft-page.js"></script>
 <script type="module">
 import { Grabfold } from "https://esm.sh/grabfold@0.1.0";
 import { supportsWebGL, webglFold } from "https://esm.sh/grabfold@0.1.0/webgl";
@@ -33,7 +34,8 @@ const url=new URLSearchParams(location.search).get("pdf") || "https://mozilla.gi
 const pdf=await pdfjs.getDocument({url}).promise;
 const count=pdf.numPages;
 const bookId=location.pathname.match(/^\/b\/([a-f0-9]{24})$/)?.[1];
-let overlays=[];
+let overlays=[],textDrafts={};
+if(bookId){try{const r=await fetch("/public/text-drafts/"+bookId);if(r.ok)textDrafts=await r.json()}catch(e){console.warn("Text drafts unavailable",e)}}
 if(bookId){try{const r=await fetch('/public/elements/'+bookId);if(r.ok)overlays=await r.json()}catch(e){console.warn('Overlays unavailable',e)}}
 function videoEmbed(url){
 try{const u=new URL(url);if(!['https:','http:'].includes(u.protocol))return null;
@@ -79,7 +81,7 @@ sheets:Math.ceil(count/2),covers:"none",pageRatio:first.width/first.height,
 foldRenderer:curl,sound,render(slot,page){
 const i=indexOf(page);if(i===null||i>=count)return;
 let disposed=false;
-void canvasFor(i).then(canvas=>{if(!disposed){slot.append(canvas);addOverlays(slot,i)}}).catch(e=>{console.error(e)});
+void canvasFor(i).then(canvas=>{if(!disposed){slot.append(canvas);if(typeof textDrafts[i+1]==="string")slot.append(FlipBookDraftPage(textDrafts[i+1]));addOverlays(slot,i)}}).catch(e=>{console.error(e)});
 return ()=>{disposed=true;slot.replaceChildren()};
 }});
 function update(){
