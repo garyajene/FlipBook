@@ -78,9 +78,10 @@ class Handler(BaseHTTPRequestHandler):
 <section><h2>Your flipbooks</h2><div style="overflow:auto"><table><thead><tr><th>Title</th><th>Public link</th><th>Share</th><th>Created</th></tr></thead><tbody>""" + (rows or '<tr><td colspan="4">No flipbooks yet. Upload your first PDF above.</td></tr>') + """</tbody></table></div></section>
 <p class="note">For permanent files on Railway, attach a volume at /data before uploading.</p></main></html>"""
             return self.send(200, page)
-        if path.startswith(("/edit/", "/api/elements/", "/public/elements/")):
+        if path.startswith(("/edit/", "/text-edit/", "/api/elements/", "/public/elements/")):
             is_edit = path.startswith("/edit/")
-            is_private = is_edit or path.startswith("/api/elements/")
+            is_text_edit = path.startswith("/text-edit/")
+            is_private = is_edit or is_text_edit or path.startswith("/api/elements/")
             if is_private and not self.authorized():
                 return
             bid = path.rsplit("/", 1)[-1]
@@ -92,6 +93,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(404, "Not found", "text/plain")
             if is_edit:
                 return self.send(200, (ROOT / "editor.html").read_bytes())
+            if is_text_edit:
+                return self.send(200, (ROOT / "text-workspace.html").read_bytes())
             file = ELEMENTS / (bid + ".json")
             return self.send(200, file.read_bytes() if file.exists() else b"[]", "application/json")
         if path.startswith("/b/"):
