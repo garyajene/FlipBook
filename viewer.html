@@ -81,7 +81,7 @@ sheets:Math.ceil(count/2),covers:"none",pageRatio:first.width/first.height,
 foldRenderer:curl,sound,render(slot,page){
 const i=indexOf(page);if(i===null||i>=count)return;
 let disposed=false;
-void canvasFor(i).then(canvas=>{if(!disposed){slot.append(canvas);if(typeof textDrafts[i+1]==="string")slot.append(FlipBookDraftPage(textDrafts[i+1]));addOverlays(slot,i)}}).catch(e=>{console.error(e)});
+void canvasFor(i).then(canvas=>{if(!disposed){slot.append(canvas);if(i>0&&typeof textDrafts[i+1]==="string")slot.append(FlipBookDraftPage(textDrafts[i+1]));addOverlays(slot,i)}}).catch(e=>{console.error(e)});
 return ()=>{disposed=true;slot.replaceChildren()};
 }});
 function update(){
