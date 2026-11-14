@@ -147,7 +147,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not 0 < size <= 8 * 1024 * 1024:
                     raise ValueError("Draft too large")
                 payload = json.loads(self.rfile.read(size))
-                if not isinstance(payload, dict) or len(payload) > 500 or any(not str(k).isdigit() or int(k) < 1 or not isinstance(v, str) or len(v) > 500000 for k,v in payload.items()):
+                if not isinstance(payload, dict) or len(payload) > 500 or any(not str(k).isdigit() or int(k) < 1 or not isinstance(v, str) or len(v.encode('utf-8')) > 4 * 1024 * 1024 for k,v in payload.items()):
                     raise ValueError("Invalid draft")
                 target = DRAFTS / (bid + ".json")
                 temp = DRAFTS / (bid + ".tmp")
