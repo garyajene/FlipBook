@@ -102,6 +102,15 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, file.read_bytes() if file.exists() else b"{}", "application/json")
             file = ELEMENTS / (bid + ".json")
             return self.send(200, file.read_bytes() if file.exists() else b"[]", "application/json")
+        if path.startswith("/public/text-drafts/"):
+            bid = path.rsplit("/", 1)[-1]
+            if not re.fullmatch(r"[a-f0-9]{24}", bid):
+                return self.send(404, "Not found", "text/plain")
+            with sqlite3.connect(DB) as db:
+                if not db.execute("SELECT 1 FROM books WHERE id=?", (bid,)).fetchone():
+                    return self.send(404, "Not found", "text/plain")
+            file = DRAFTS / (bid + ".json")
+            return self.send(200, file.read_bytes() if file.exists() else b"{}", "application/json")
         if path.startswith("/b/"):
             bid = path[3:]
             if not re.fullmatch(r"[a-f0-9]{24}", bid):
@@ -127,6 +136,8 @@ class Handler(BaseHTTPRequestHandler):
             if not file.is_file():
                 return self.send(404, "PDF missing", "text/plain")
             return self.send(200, file.read_bytes(), "application/pdf", {"Content-Disposition": "inline"})
+        if path == "/draft-page.js":
+            return self.send(200, (ROOT / "draft-page.js").read_bytes(), "application/javascript")
         if path == "/viewer.html":
             return self.send(200, (ROOT / "viewer.html").read_bytes())
         return self.send(404, "Not found", "text/plain")
