@@ -8,12 +8,14 @@
 <main class="stage"><div id="page" class="page"><canvas id="pdf"></canvas></div><div class="pagebar"><button id="prev">← Previous</button><span id="count">Loading…</span><button id="next">Next →</button></div><p id="message" class="muted"></p></main>
 <aside><h2>Element settings</h2><div id="empty" class="muted">Select an element to edit it.</div><div id="fields" hidden><label>Label or text<input id="label"></label><label>Link / video URL<input id="url" placeholder="https://"></label><label>Font<select id="font"><option>Arial</option><option>Georgia</option><option>Verdana</option><option>Times New Roman</option><option>Courier New</option></select></label><label>Font size (px)<input id="size" type="number" min="5" max="120"></label><label>Text color<input id="color" type="color"></label><label>Width (% of page)<input id="width" type="range" min="0.5" max="95" step="0.5"></label><label>Height (% of page)<input id="height" type="range" min="0.5" max="70" step="0.5"></label><button id="remove">Remove element</button></div></aside></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="/draft-page.js"></script>
 <script>
 (async()=>{
 const id=location.pathname.split('/').pop(), $=s=>document.getElementById(s);
 $('view').href='/b/'+id;$('textEdit').href='/text-edit/'+id;
 const pdfjs=window.pdfjsLib;pdfjs.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
-let elements=[],selected=null,index=1,doc;
+let elements=[],selected=null,index=1,doc,textDrafts={};
+try{const r=await fetch("/api/text-drafts/"+id);if(r.ok)textDrafts=await r.json()}catch(e){console.warn("Text drafts unavailable",e)}
 try{
 const [resp,pdf]=await Promise.all([fetch('/api/elements/'+id),pdfjs.getDocument('/pdf/'+id).promise]);
 if(!resp.ok)throw Error('Could not load saved elements');
@@ -29,7 +31,7 @@ document.querySelectorAll('.item').forEach(n=>n.classList.toggle('selected',sele
 function add(type){const e={id:crypto.randomUUID(),page:index,type,x:15,y:20,w:45,h:type==='text'?12:20,label:type==='video'?'▶ Play video':type==='link'?'Open link':'Your text here',url:'',font:'Arial',size:22,color:'#111111'};elements.push(e);selected=e;paint();refresh()}
 document.querySelectorAll('[data-type]').forEach(b=>b.onclick=()=>add(b.dataset.type));
 function paint(){
-document.querySelectorAll('.item').forEach(n=>n.remove());
+document.querySelectorAll('.item,.published-draft').forEach(n=>n.remove());
 for(const e of current()){
 const n=document.createElement('div');n.className='item '+e.type;n.dataset.id=e.id;n.style.left=e.x+'%';n.style.top=e.y+'%';n.style.width=e.w+'%';n.style.height=e.h+'%';n.style.fontFamily=e.font;n.style.fontSize=e.size+'px';n.style.color=e.type==='video'?'white':e.color;n.textContent=e.label;n.title='Drag to move; drag blue corner to resize';$('page').append(n);
 if(e.type==='text'){n.ondblclick=()=>{select(e);n.contentEditable='true';n.focus();const range=document.createRange();range.selectNodeContents(n);const sel=window.getSelection();sel.removeAllRanges();sel.addRange(range)};n.onblur=()=>{if(n.isContentEditable){e.label=n.innerText;n.contentEditable='false';refresh()}}}
@@ -41,7 +43,7 @@ n.onclick=()=>select(e);
 n.onpointerdown=ev=>{if(n.isContentEditable)return;ev.preventDefault();select(e);n.setPointerCapture(ev.pointerId);const rect=$('page').getBoundingClientRect(),sx=ev.clientX,sy=ev.clientY,ox=e.x,oy=e.y;n.onpointermove=move=>{if(!n.hasPointerCapture(move.pointerId))return;e.x=Math.max(0,Math.min(100-e.w,ox+(move.clientX-sx)/rect.width*100));e.y=Math.max(0,Math.min(100-e.h,oy+(move.clientY-sy)/rect.height*100));n.style.left=e.x+'%';n.style.top=e.y+'%'};n.onpointerup=()=>{n.onpointermove=null}};
 }refresh()
 }
-async function draw(){const p=await doc.getPage(index),v=p.getViewport({scale:1.5}),c=$('pdf');c.width=v.width;c.height=v.height;await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;$('count').textContent='Page '+index+' of '+doc.numPages;$('prev').disabled=index===1;$('next').disabled=index===doc.numPages;selected=null;paint()}
+async function draw(){const p=await doc.getPage(index),v=p.getViewport({scale:1.5}),c=$('pdf');c.width=v.width;c.height=v.height;await p.render({canvasContext:c.getContext('2d'),viewport:v}).promise;$('count').textContent='Page '+index+' of '+doc.numPages;$('prev').disabled=index===1;$('next').disabled=index===doc.numPages;selected=null;paint();if(typeof textDrafts[index]==='string')$('page').insertBefore(FlipBookDraftPage(textDrafts[index]),$('page').querySelector('.item'))}
 $('prev').onclick=()=>{if(index>1){index--;draw()}};$('next').onclick=()=>{if(index<doc.numPages){index++;draw()}};
 for(const key of ['label','url','font','size','color','width','height'])$(key).oninput=()=>{if(!selected)return;const map={width:'w',height:'h'};selected[map[key]||key]=['size','width','height'].includes(key)?Number($(key).value):$(key).value;paint()};
 $('remove').onclick=()=>{elements=elements.filter(e=>e!==selected);selected=null;paint()};
