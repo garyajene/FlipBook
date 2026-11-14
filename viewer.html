@@ -1,0 +1,78 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>FlipBook — GrabFold Viewer</title>
+<style>
+:root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#12141b;color:#f3f3f5}
+*{box-sizing:border-box}body{margin:0;min-height:100vh}header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid #303340}h1{font-size:19px;margin:0;font-weight:650}main{max-width:1100px;margin:0 auto;padding:25px 18px 60px}#status{text-align:center;color:#bfc2cf;min-height:24px}.book{width:100%;max-width:920px;margin:18px auto;filter:drop-shadow(0 15px 28px #0009)}.book canvas{display:block;width:100%;height:100%}.controls{display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap;margin:22px auto}button{background:#292d3a;color:#fff;border:1px solid #4a4f62;border-radius:8px;padding:11px 18px;cursor:pointer}button:disabled{opacity:.4;cursor:default}#where{min-width:150px;text-align:center}.settings{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;color:#bfc2cf;font-size:14px}a{color:#cbd7ff}#error{color:#ffb2b2;text-align:center;white-space:pre-wrap}
+</style>
+</head>
+<body>
+<header><h1>FlipBook</h1><span>Powered by GrabFold</span></header>
+<main>
+<p id="status">Loading sample PDF…</p><p id="error" role="alert"></p>
+<div id="book" class="book" aria-label="PDF flipbook"></div>
+<nav class="controls" aria-label="Flipbook navigation">
+<button id="prev" disabled>← Previous</button><span id="where">Loading…</span><button id="next" disabled>Next →</button>
+</nav>
+<div class="settings"><label><input id="curl" type="checkbox" checked> 3D page curl</label><label><input id="sound" type="checkbox" checked> Page-turn sound</label></div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script type="module">
+import { Grabfold } from "https://esm.sh/grabfold@0.1.0";
+import { supportsWebGL, webglFold } from "https://esm.sh/grabfold@0.1.0/webgl";
+import { createPageTurnSound } from "https://esm.sh/grabfold@0.1.0/sound";
+import { defaultPageTurnTakes } from "https://esm.sh/grabfold@0.1.0/sounds";
+const status=document.getElementById("status"), error=document.getElementById("error");
+try {
+const pdfjs=window.pdfjsLib;
+if(!pdfjs) throw new Error("PDF renderer could not load.");
+pdfjs.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+const url=new URLSearchParams(location.search).get("pdf") || "https://mozilla.github.io/pdf.js/web/compressed.tracemonkey-pldi-09.pdf";
+const pdf=await pdfjs.getDocument({url}).promise;
+const count=pdf.numPages;
+const first=(await pdf.getPage(1)).getViewport({scale:1});
+const cache=new Map();
+function canvasFor(index){
+if(!cache.has(index)) cache.set(index,pdf.getPage(index+1).then(async page=>{
+const base=page.getViewport({scale:1});
+const width=Math.min(1600,Math.round(460*Math.min(2,devicePixelRatio)*1.5));
+const viewport=page.getViewport({scale:width/base.width});
+const canvas=document.createElement("canvas");
+canvas.width=Math.round(viewport.width);canvas.height=Math.round(viewport.height);
+await page.render({canvasContext:canvas.getContext("2d"),viewport}).promise;
+return canvas;
+}));
+return cache.get(index);
+}
+const indexOf=page=>page.kind==="cover"?null:page.sheet*2+(page.kind==="back"?1:0);
+const curl=supportsWebGL()?webglFold({texture:page=>{
+const i=indexOf(page);return i===null||i>=count?null:canvasFor(i);
+}}):null;
+const sound=createPageTurnSound({takes:defaultPageTurnTakes});
+const book=new Grabfold(document.getElementById("book"),{
+sheets:Math.ceil(count/2),covers:"none",pageRatio:first.width/first.height,
+foldRenderer:curl,sound,render(slot,page){
+const i=indexOf(page);if(i===null||i>=count)return;
+let disposed=false;
+void canvasFor(i).then(canvas=>{if(!disposed)slot.append(canvas)}).catch(e=>{console.error(e)});
+return ()=>{disposed=true;slot.replaceChildren()};
+}});
+function update(){
+const {left,right}=book.view;
+const pages=[left,right].filter(Boolean).map(p=>indexOf(p)).filter(i=>i!==null&&i<count).map(i=>i+1);
+document.getElementById("where").textContent=pages.length?`Page ${pages.join("–")} of ${count}`:`${count} pages`;
+document.getElementById("prev").disabled=!book.canPrev();
+document.getElementById("next").disabled=!book.canNext();
+}
+book.on("change",update);update();
+document.getElementById("prev").onclick=()=>book.prev();
+document.getElementById("next").onclick=()=>book.next();
+const curlInput=document.getElementById("curl");curlInput.disabled=!curl;curlInput.checked=!!curl;
+curlInput.onchange=e=>book.setOptions({foldRenderer:e.target.checked?curl:null});
+document.getElementById("sound").onchange=e=>sound.muted=!e.target.checked;
+status.textContent="Drag a page to turn it, or use the arrows.";
+} catch(e){status.textContent="Unable to open the flipbook.";error.textContent=e.message;console.error(e)}
+</script>
+</body></html>
