@@ -11,7 +11,7 @@ function restore(){paper.focus();const sel=window.getSelection();if(savedRange&&
 function videoEmbed(value){
 try{const u=new URL(value);if(!['https:','http:'].includes(u.protocol))return null;
 let v=null;
-if(['youtube.com','www.youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(u.hostname)){v=u.searchParams.get('v')||u.pathname.match(/^\\/(?:shorts|live|embed)\\/([A-Za-z0-9_-]{11})/)?.[1]}
+if(['youtube.com','www.youtube.com','m.youtube.com','music.youtube.com','youtube-nocookie.com'].includes(u.hostname)){v=u.searchParams.get('v')||u.pathname.split('/').filter(Boolean).slice(-1)[0]}
 else if(u.hostname==='youtu.be'){v=u.pathname.slice(1).split('/')[0]}
 if(v&&/^[A-Za-z0-9_-]{11}$/.test(v))return 'https://www.youtube-nocookie.com/embed/'+v+'?autoplay=1';
 if(['vimeo.com','www.vimeo.com'].includes(u.hostname)){v=u.pathname.slice(1);if(/^[0-9]+$/.test(v))return 'https://player.vimeo.com/video/'+v+'?autoplay=1'}
