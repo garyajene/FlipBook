@@ -71,7 +71,9 @@ if(paragraph)paras.push(paragraph);
 return paras.join('\n\n')
 }
 try{const response=await fetch('/api/text-drafts/'+id);if(response.ok){const stored=await response.json();for(const [page,markup] of Object.entries(stored))drafts.set(Number(page),markup)}doc=await pdfjs.getDocument('/pdf/'+id).promise;for(let i=1;i<=doc.numPages;i++){const o=document.createElement('option');o.value=i;o.textContent='Page '+i;$('page').append(o)}await show(1)}catch(e){$('status').textContent='Unable to read PDF: '+e.message}
-async function show(n){if(!doc)return;if(current&&$('paper').dataset.loaded)drafts.set(current,$('paper').innerHTML);savedRange=null;current=n;$('page').value=n;
+async function show(n){if(!doc)return;if(current&&$('paper').dataset.loaded&&current!==1)drafts.set(current,draftHtml());savedRange=null;current=n;$('page').value=n;
+if(n===1){const page=await doc.getPage(1),viewport=page.getViewport({scale:1.5}),canvas=document.createElement('canvas');canvas.width=Math.round(viewport.width);canvas.height=Math.round(viewport.height);canvas.style.cssText='display:block;width:100%;height:auto';await page.render({canvasContext:canvas.getContext('2d'),viewport}).promise;paper.replaceChildren(canvas);paper.contentEditable='false';paper.style.padding='0';paper.dataset.loaded='1';$('status').textContent='Original PDF cover preview (not editable here).';return}
+paper.contentEditable='true';paper.style.padding='';
 if(drafts.has(n)){$('paper').innerHTML=drafts.get(n)}else{const p=await doc.getPage(n),data=await p.getTextContent();$('paper').replaceChildren(...extractParagraphs(data.items).split(/\n\n/).map(t=>{const p=document.createElement('p');p.textContent=t;return p}))} $('paper').dataset.loaded='1';$('status').textContent='Editing page '+n+' — click Save Changes to keep your work'}
 $('page').onchange=()=>show(Number($('page').value));$('font').onchange=()=>formatSelected('fontFamily',$('font').value);$('size').onchange=()=>formatSelected('fontSize',$('size').value+'px');
 $('bold').onclick=()=>{ $('paper').focus();document.execCommand('bold')};$('italic').onclick=()=>{$('paper').focus();document.execCommand('italic')};
@@ -80,7 +82,7 @@ $('insert').onclick=async()=>{const url=validUrl($('videoUrl').value);if(!url){$
 async function saveChanges(){
 const status=$('saveStatus'),button=$('save');
 if(!doc){status.textContent='PDF is still loading';return false}
-drafts.set(current,draftHtml());button.disabled=true;status.textContent='Saving…';$('status').textContent='Saving…';
+if(current!==1)drafts.set(current,draftHtml());button.disabled=true;status.textContent='Saving…';$('status').textContent='Saving…';
 try{
 const payload=JSON.stringify(Object.fromEntries(drafts));
 if(new Blob([payload]).size>7*1024*1024)throw new Error('Draft is too large. Reduce thumbnail image sizes.');
