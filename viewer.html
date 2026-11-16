@@ -5,7 +5,7 @@
 <title>FlipBook — GrabFold Viewer</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#12141b;color:#f3f3f5}
-*{box-sizing:border-box}body{margin:0;min-height:100vh}header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid #303340}h1{font-size:19px;margin:0;font-weight:650}main{max-width:1100px;margin:0 auto;padding:25px 18px 60px}#status{text-align:center;color:#bfc2cf;min-height:24px}.book{width:100%;max-width:920px;margin:18px auto;filter:drop-shadow(0 15px 28px #0009)}.book canvas{display:block;width:100%;height:100%}.overlay-item{position:absolute;display:flex;align-items:center;justify-content:center;overflow:hidden;line-height:1.2;z-index:2}.overlay-item.text{justify-content:flex-start;white-space:pre-wrap}.overlay-item.video{background:#151b2cdd;color:white;border:1px solid #fff5;cursor:pointer}.overlay-item.link{border:1px dashed #438cff66;cursor:pointer}.video-modal{position:fixed;inset:0;background:#000d;z-index:100;display:none;align-items:center;justify-content:center;padding:25px}.video-modal.active{display:flex}.video-box{width:min(900px,95vw);background:#171b27;padding:15px;border-radius:12px}.video-box iframe{width:100%;aspect-ratio:16/9;border:0}.video-box button{float:right;margin-bottom:10px}.controls{display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap;margin:22px auto}button{background:#292d3a;color:#fff;border:1px solid #4a4f62;border-radius:8px;padding:11px 18px;cursor:pointer}button:disabled{opacity:.4;cursor:default}#where{min-width:150px;text-align:center}.settings{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;color:#bfc2cf;font-size:14px}a{color:#cbd7ff}#error{color:#ffb2b2;text-align:center;white-space:pre-wrap}
+*{box-sizing:border-box}body{margin:0;min-height:100vh}header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid #303340}h1{font-size:19px;margin:0;font-weight:650}main{max-width:1100px;margin:0 auto;padding:25px 18px 60px}#status{text-align:center;color:#bfc2cf;min-height:24px}.book{width:100%;max-width:920px;margin:18px auto;filter:drop-shadow(0 15px 28px #0009)}.book canvas{display:block;width:100%;height:100%}.overlay-item{position:absolute;display:flex;align-items:center;justify-content:center;overflow:hidden;line-height:1.2;z-index:2}.overlay-item.text{justify-content:flex-start;white-space:pre-wrap}.overlay-item.video{background:#151b2cdd;color:white;border:1px solid #fff5;cursor:pointer}.overlay-item.link{border:1px dashed #438cff66;cursor:pointer}.pdf-annotation-link{position:absolute;z-index:2;display:block;cursor:pointer;background:transparent}.video-modal{position:fixed;inset:0;background:#000d;z-index:100;display:none;align-items:center;justify-content:center;padding:25px}.video-modal.active{display:flex}.video-box{width:min(900px,95vw);background:#171b27;padding:15px;border-radius:12px}.video-box iframe{width:100%;aspect-ratio:16/9;border:0}.video-box button{float:right;margin-bottom:10px}.controls{display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap;margin:22px auto}button{background:#292d3a;color:#fff;border:1px solid #4a4f62;border-radius:8px;padding:11px 18px;cursor:pointer}button:disabled{opacity:.4;cursor:default}#where{min-width:150px;text-align:center}.settings{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;color:#bfc2cf;font-size:14px}a{color:#cbd7ff}#error{color:#ffb2b2;text-align:center;white-space:pre-wrap}
 </style>
 </head>
 <body>
@@ -57,6 +57,37 @@ if(e.type==='video'&&e.url)n.onclick=ev=>{ev.stopPropagation();showVideo(e.url)}
 slot.append(n);
 }
 }
+// Preserve existing external hyperlinks embedded in uploaded PDF pages.
+const annotationCache=new Map();
+function pdfLinksFor(index){
+if(!annotationCache.has(index))annotationCache.set(index,pdf.getPage(index+1).then(async page=>{
+const viewport=page.getViewport({scale:1});
+const annotations=await page.getAnnotations({intent:'display'});
+return annotations.filter(a=>a.subtype==='Link'&&a.url&&Array.isArray(a.rect)).map(a=>{
+const url=safeExternalUrl(a.url);
+if(!url)return null;
+const [x1,y1,x2,y2]=viewport.convertToViewportRectangle(a.rect);
+const left=Math.max(0,Math.min(x1,x2)),top=Math.max(0,Math.min(y1,y2));
+const right=Math.min(viewport.width,Math.max(x1,x2)),bottom=Math.min(viewport.height,Math.max(y1,y2));
+if(right<=left||bottom<=top)return null;
+return {url,x:100*left/viewport.width,y:100*top/viewport.height,w:100*(right-left)/viewport.width,h:100*(bottom-top)/viewport.height};
+}).filter(Boolean);
+}));
+return annotationCache.get(index);
+}
+function safeExternalUrl(raw){
+try{const u=new URL(raw);return ['https:','http:'].includes(u.protocol)?u.href:null}catch(e){return null}
+}
+async function addPdfLinks(slot,index){
+const links=await pdfLinksFor(index);
+for(const link of links){
+const a=document.createElement('a');a.className='pdf-annotation-link';
+a.href=link.url;a.target='_blank';a.rel='noopener noreferrer';
+a.setAttribute('aria-label','Open PDF link');
+a.style.left=link.x+'%';a.style.top=link.y+'%';a.style.width=link.w+'%';a.style.height=link.h+'%';
+slot.append(a);
+}
+}
 const first=(await pdf.getPage(1)).getViewport({scale:1});
 const cache=new Map();
 function canvasFor(index){
@@ -81,7 +112,15 @@ sheets:Math.ceil(count/2),covers:"none",pageRatio:first.width/first.height,
 foldRenderer:curl,sound,render(slot,page){
 const i=indexOf(page);if(i===null||i>=count)return;
 let disposed=false;
-void canvasFor(i).then(canvas=>{if(!disposed){slot.append(canvas);if(i>0&&typeof textDrafts[i+1]==="string")slot.append(FlipBookDraftPage(textDrafts[i+1]));addOverlays(slot,i)}}).catch(e=>{console.error(e)});
+void canvasFor(i).then(async canvas=>{
+if(disposed)return;
+slot.append(canvas);
+const hasDraft=i>0&&typeof textDrafts[i+1]==="string";
+if(hasDraft)slot.append(FlipBookDraftPage(textDrafts[i+1]));
+// A replacement text draft owns its page; PDF annotations belong to the original PDF.
+if(!hasDraft){try{await addPdfLinks(slot,i)}catch(e){console.warn('PDF links unavailable on page '+(i+1),e)}}
+if(!disposed)addOverlays(slot,i);
+}).catch(e=>{console.error(e)});
 return ()=>{disposed=true;slot.replaceChildren()};
 }});
 function update(){
