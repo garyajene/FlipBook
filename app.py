@@ -101,7 +101,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, (ROOT / "text-workspace.html").read_bytes())
             if path.startswith(("/api/viewer-settings/", "/public/viewer-settings/")):
                 file = SETTINGS / (bid + ".json")
-                return self.send(200, file.read_bytes() if file.exists() else b'{"manual_turn":false}', "application/json")
+                return self.send(200, file.read_bytes() if file.exists() else b'{"manual_turn":false,"show_curl":false}', "application/json")
             if path.startswith("/api/text-drafts/"):
                 file = DRAFTS / (bid + ".json")
                 return self.send(200, file.read_bytes() if file.exists() else b"{}", "application/json")
@@ -186,11 +186,11 @@ class Handler(BaseHTTPRequestHandler):
                 if not 0 < size <= 1024:
                     raise ValueError("Invalid size")
                 payload = json.loads(self.rfile.read(size))
-                if not isinstance(payload, dict) or type(payload.get("manual_turn")) is not bool:
+                if not isinstance(payload, dict) or type(payload.get("manual_turn")) is not bool or type(payload.get("show_curl")) is not bool:
                     raise ValueError("Invalid setting")
                 target = SETTINGS / (bid + ".json")
                 temp = SETTINGS / (bid + ".tmp")
-                temp.write_text(json.dumps({"manual_turn": payload["manual_turn"]}), encoding="utf-8")
+                temp.write_text(json.dumps({"manual_turn": payload["manual_turn"], "show_curl": payload["show_curl"]}), encoding="utf-8")
                 temp.replace(target)
             except (ValueError, TypeError) as exc:
                 return self.send(400, str(exc), "text/plain")
