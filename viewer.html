@@ -55,7 +55,7 @@ if(type==='youtube-link'){
 let id=null;
 if(['youtube.com','www.youtube.com','m.youtube.com'].includes(u.hostname)){id=u.searchParams.get('v');if(!id&&u.pathname.split('/').filter(Boolean).length===2&&['shorts','embed'].includes(u.pathname.split('/')[1]))id=u.pathname.split('/')[2]}
 else if(u.hostname==='youtu.be')id=u.pathname.split('/')[1];
-return id&&id.length===11&&Array.from(id).every(c=>/[a-zA-Z0-9_-]/.test(c))?{type:'iframe',url:'https://www.youtube-nocookie.com/embed/'+id+'?autoplay=1'}:null;
+return id&&id.length===11&&Array.from(id).every(c=>/[a-zA-Z0-9_-]/.test(c))?{type:'iframe',url:'https://www.youtube-nocookie.com/embed/'+id+'?autoplay=1&playsinline=1&rel=0'}:null;
 }
 if(type==='aws-link'&&u.protocol==='https:'&&u.pathname.toLowerCase().endsWith('.mp4'))return {type:'mp4',url:u.href};
 }catch(e){}return null;
