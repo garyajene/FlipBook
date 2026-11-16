@@ -237,7 +237,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not isinstance(payload, list) or len(payload) > 300:
                     raise ValueError("Invalid elements")
                 for e in payload:
-                    if not isinstance(e, dict) or e.get("type") not in ("text", "link", "video", "youtube-link", "aws-link") or type(e.get("page")) is not int or e["page"] < 1:
+                    if not isinstance(e, dict) or e.get("type") not in ("text", "link", "page-link", "video", "youtube-link", "aws-link") or type(e.get("page")) is not int or e["page"] < 1:
                         raise ValueError("Invalid element")
                     for key in ("x", "y", "w", "h", "size"):
                         if type(e.get(key)) not in (int, float) or not 0 <= e[key] <= 120:
@@ -245,6 +245,8 @@ class Handler(BaseHTTPRequestHandler):
                     for key in ("label", "url", "font", "color", "id"):
                         if not isinstance(e.get(key), str) or len(e[key]) > 2000:
                             raise ValueError("Invalid field")
+                    if e["type"] == "page-link" and (type(e.get("targetPage")) is not int or e["targetPage"] < 1 or e["targetPage"] > 100000):
+                        raise ValueError("Invalid destination page")
                     if e["type"] in ("link", "video", "youtube-link", "aws-link") and e["url"] and not e["url"].startswith(("https://", "http://")):
                         raise ValueError("Only HTTP(S) URLs allowed")
                 target = ELEMENTS / (bid + ".json")
