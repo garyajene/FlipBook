@@ -5,18 +5,15 @@
 <title>FlipBook — GrabFold Viewer</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#12141b;color:#f3f3f5}
-*{box-sizing:border-box}body{margin:0;min-height:100vh}header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid #303340}h1{font-size:19px;margin:0;font-weight:650}main{max-width:1100px;margin:0 auto;padding:25px 18px 60px}#status{text-align:center;color:#bfc2cf;min-height:24px}.book{width:100%;max-width:920px;margin:18px auto;filter:drop-shadow(0 15px 28px #0009)}.book canvas{display:block;width:100%;height:100%}.overlay-item{position:absolute;display:flex;align-items:center;justify-content:center;overflow:hidden;line-height:1.2;z-index:2}.overlay-item.text{justify-content:flex-start;white-space:pre-wrap}.overlay-item.video{background:#151b2cdd;color:white;border:1px solid #fff5;cursor:pointer}.overlay-item.link{border:1px dashed #438cff66;cursor:pointer}.overlay-item.youtube-link,.overlay-item.aws-link{background:transparent;cursor:pointer}.inline-video-player{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;z-index:5}.pdf-annotation-link{position:absolute;z-index:2;display:block;cursor:pointer;background:transparent}.video-modal{position:fixed;inset:0;background:#000d;z-index:100;display:none;align-items:center;justify-content:center;padding:25px}.video-modal.active{display:flex}.video-box{width:min(900px,95vw);background:#171b27;padding:15px;border-radius:12px}.video-box iframe{width:100%;aspect-ratio:16/9;border:0}.video-box button{float:right;margin-bottom:10px}.controls{display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap;margin:22px auto}button{background:#292d3a;color:#fff;border:1px solid #4a4f62;border-radius:8px;padding:11px 18px;cursor:pointer}button:disabled{opacity:.4;cursor:default}#where{min-width:150px;text-align:center}.settings{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;color:#bfc2cf;font-size:14px}a{color:#cbd7ff}#error{color:#ffb2b2;text-align:center;white-space:pre-wrap}
+*{box-sizing:border-box}body{margin:0;min-height:100vh}header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid #303340}h1{font-size:19px;margin:0;font-weight:650}main{max-width:1100px;margin:0 auto;padding:25px 18px 60px}#status{text-align:center;color:#bfc2cf;min-height:24px}.reader{position:relative;max-width:1140px;margin:18px auto;padding:0 95px}.book{width:100%;max-width:920px;margin:0 auto;filter:drop-shadow(0 15px 28px #0009)}.side-nav{position:absolute;top:50%;transform:translateY(-50%);z-index:10}.side-nav.prev{left:0}.side-nav.next{right:0}.page-count{text-align:center;margin:16px auto;color:#e7e8ee}@media(max-width:700px){.reader{padding:0 0 64px}.side-nav{top:auto;bottom:0;transform:none}.side-nav.prev{left:8px}.side-nav.next{right:8px}}.book canvas{display:block;width:100%;height:100%}.overlay-item{position:absolute;display:flex;align-items:center;justify-content:center;overflow:hidden;line-height:1.2;z-index:2}.overlay-item.text{justify-content:flex-start;white-space:pre-wrap}.overlay-item.video{background:#151b2cdd;color:white;border:1px solid #fff5;cursor:pointer}.overlay-item.link{border:1px dashed #438cff66;cursor:pointer}.overlay-item.youtube-link,.overlay-item.aws-link{background:transparent;cursor:pointer}.inline-video-player{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;z-index:5}.pdf-annotation-link{position:absolute;z-index:2;display:block;cursor:pointer;background:transparent}.video-modal{position:fixed;inset:0;background:#000d;z-index:100;display:none;align-items:center;justify-content:center;padding:25px}.video-modal.active{display:flex}.video-box{width:min(900px,95vw);background:#171b27;padding:15px;border-radius:12px}.video-box iframe{width:100%;aspect-ratio:16/9;border:0}.video-box button{float:right;margin-bottom:10px}.controls{display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap;margin:22px auto}button{background:#292d3a;color:#fff;border:1px solid #4a4f62;border-radius:8px;padding:11px 18px;cursor:pointer}button:disabled{opacity:.4;cursor:default}#where{min-width:150px;text-align:center}.settings{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;color:#bfc2cf;font-size:14px}a{color:#cbd7ff}#error{color:#ffb2b2;text-align:center;white-space:pre-wrap}
 </style>
 </head>
 <body>
 <header><h1>FlipBook</h1><span>Powered by GrabFold</span></header>
 <main>
 <p id="status">Loading sample PDF…</p><p id="error" role="alert"></p>
-<div id="book" class="book" aria-label="PDF flipbook"></div>
-<nav class="controls" aria-label="Flipbook navigation">
-<button id="prev" disabled>← Previous</button><span id="where">Loading…</span><button id="next" disabled>Next →</button>
-</nav>
-<div class="settings"><label><input id="curl" type="checkbox" checked> 3D page curl</label><label><input id="sound" type="checkbox" checked> Page-turn sound</label></div>
+<div class="reader"><button id="prev" class="side-nav prev" disabled>← Previous</button><div id="book" class="book" aria-label="PDF flipbook"></div><button id="next" class="side-nav next" disabled>Next →</button></div><div id="where" class="page-count" role="status">Loading…</div>
+<div class="settings"><label><input id="curl" type="checkbox" checked> 3D page curl</label><label><input id="sound" type="checkbox" checked> Page-turn sound</label><label><input id="manual" type="checkbox" checked> Manual page turning</label></div>
 </main><div id="videoModal" class="video-modal"><div class="video-box"><button id="closeVideo">Close ✕</button><div id="videoFrame"></div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="/draft-page.js"></script>
@@ -55,7 +52,7 @@ if(type==='youtube-link'){
 let id=null;
 if(['youtube.com','www.youtube.com','m.youtube.com'].includes(u.hostname)){id=u.searchParams.get('v');if(!id&&u.pathname.split('/').filter(Boolean).length===2&&['shorts','embed'].includes(u.pathname.split('/')[1]))id=u.pathname.split('/')[2]}
 else if(u.hostname==='youtu.be')id=u.pathname.split('/')[1];
-return id&&id.length===11&&Array.from(id).every(c=>/[a-zA-Z0-9_-]/.test(c))?{type:'iframe',url:'https://www.youtube-nocookie.com/embed/'+id+'?autoplay=1&playsinline=1&rel=0'}:null;
+return id&&id.length===11&&Array.from(id).every(c=>/[a-zA-Z0-9_-]/.test(c))?{type:'iframe',url:'https://www.youtube-nocookie.com/embed/'+id+'?playsinline=1&rel=0&enablejsapi=1'}:null;
 }
 if(type==='aws-link'&&u.protocol==='https:'&&u.pathname.toLowerCase().endsWith('.mp4'))return {type:'mp4',url:u.href};
 }catch(e){}return null;
@@ -63,7 +60,7 @@ if(type==='aws-link'&&u.protocol==='https:'&&u.pathname.toLowerCase().endsWith('
 function playInlineVideo(area,type,url){
 const source=inlineVideoSource(type,url);if(!source)return;
 let player;
-if(source.type==='mp4'){player=document.createElement('video');player.src=source.url;player.controls=true;player.autoplay=true;player.playsInline=true}
+if(source.type==='mp4'){player=document.createElement('video');player.src=source.url;player.controls=true;player.autoplay=false;player.playsInline=true}
 else{player=document.createElement('iframe');player.src=source.url;player.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';player.allowFullscreen=true;player.referrerPolicy='strict-origin-when-cross-origin'}
 player.className='inline-video-player';area.replaceChildren(player);
 }
@@ -107,6 +104,16 @@ a.style.left=link.x+'%';a.style.top=link.y+'%';a.style.width=link.w+'%';a.style.
 slot.append(a);
 }
 }
+// Pause media on pages that leave the visible spread; do not rebuild the viewer.
+function pauseHiddenMedia(){
+const visible=new Set([book.view.left,book.view.right].filter(Boolean).map(indexOf).filter(i=>i!==null));
+document.querySelectorAll('.inline-video-player').forEach(player=>{
+const pageSlot=player.closest('[data-flipbook-page-index]');
+if(!pageSlot||visible.has(Number(pageSlot.dataset.flipbookPageIndex)))return;
+if(player.tagName==='VIDEO'){player.pause();return}
+if(player.tagName==='IFRAME'&&player.contentWindow)player.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), 'https://www.youtube-nocookie.com');
+});
+}
 const first=(await pdf.getPage(1)).getViewport({scale:1});
 const cache=new Map();
 function canvasFor(index){
@@ -128,9 +135,9 @@ const i=indexOf(page);return i===null||i>=count?null:canvasFor(i);
 const sound=createPageTurnSound({takes:defaultPageTurnTakes});
 const book=new Grabfold(document.getElementById("book"),{
 sheets:Math.ceil(count/2),covers:"none",pageRatio:first.width/first.height,
-foldRenderer:curl,sound,render(slot,page){
+foldRenderer:curl,sound,gestures:true,flick:false,grabBlock:false,commitAt:0.5,render(slot,page){
 const i=indexOf(page);if(i===null||i>=count)return;
-let disposed=false;
+let disposed=false;slot.dataset.flipbookPageIndex=String(i);
 void canvasFor(i).then(async canvas=>{
 if(disposed)return;
 slot.append(canvas);
@@ -140,7 +147,7 @@ if(hasDraft)slot.append(FlipBookDraftPage(textDrafts[i+1]));
 if(!hasDraft){try{await addPdfLinks(slot,i)}catch(e){console.warn('PDF links unavailable on page '+(i+1),e)}}
 if(!disposed)addOverlays(slot,i);
 }).catch(e=>{console.error(e)});
-return ()=>{disposed=true;slot.replaceChildren()};
+return ()=>{disposed=true;slot.querySelectorAll('video').forEach(v=>v.pause());slot.replaceChildren()};
 }});
 function update(){
 const {left,right}=book.view;
@@ -149,13 +156,14 @@ document.getElementById("where").textContent=pages.length?`Page ${pages.join("�
 document.getElementById("prev").disabled=!book.canPrev();
 document.getElementById("next").disabled=!book.canNext();
 }
-book.on("change",update);update();
+book.on("change",()=>{update();pauseHiddenMedia()});update();
 document.getElementById("prev").onclick=()=>book.prev();
 document.getElementById("next").onclick=()=>book.next();
 const curlInput=document.getElementById("curl");curlInput.disabled=!curl;curlInput.checked=!!curl;
 curlInput.onchange=e=>book.setOptions({foldRenderer:e.target.checked?curl:null});
 document.getElementById("sound").onchange=e=>sound.muted=!e.target.checked;
-status.textContent="Drag a page to turn it, or use the arrows.";
+document.getElementById("manual").onchange=e=>{if(!e.target.checked)book.cancelDrag();book.setOptions({gestures:e.target.checked})};
+status.textContent="Use the side arrows or drag a page when manual turning is enabled.";
 } catch(e){status.textContent="Unable to open the flipbook.";error.textContent=e.message;console.error(e)}
 </script>
 </body></html>
