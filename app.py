@@ -71,15 +71,15 @@ class Handler(BaseHTTPRequestHandler):
             rows = "".join(
                 '<tr><td>' + html.escape(title) + '</td><td><a target="_blank" href="/b/' + bid +
                 '">Open flipbook</a> · <a href="/edit/' + bid + '">Edit</a></td><td><button type="button" onclick="navigator.clipboard.writeText(location.origin+\'/b/' + bid + '\')">Copy link</button></td><td>' +
-                html.escape(created) + '</td></tr>' for bid, title, created in books)
+                html.escape(created) + '</td><td><form method="post" action="/api/delete/' + bid + '" onsubmit="return confirm(&quot;Permanently delete this flipbook? This cannot be undone, and its public link will stop working.&quot;)"><button type="submit" class="delete-btn">Delete</button></form></td></tr>' for bid, title, created in books)
             page = """<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FlipBook Admin</title>
-<style>body{font:16px system-ui;background:#11131b;color:#f7f7fb;margin:0;padding:32px}main{max-width:1000px;margin:auto}h1{font-size:28px}section{background:#1c202b;padding:24px;border-radius:14px;margin:24px 0}input,button{padding:12px;border-radius:8px;border:1px solid #515668;font:inherit}input{background:#fff;color:#111;max-width:100%}button{background:#c9d6ff;color:#111;cursor:pointer}table{width:100%;border-collapse:collapse}td,th{padding:12px;border-bottom:1px solid #3b3f4b;text-align:left}a{color:#b7caff}.note{color:#bfc3d0}</style>
+<style>body{font:16px system-ui;background:#11131b;color:#f7f7fb;margin:0;padding:32px}main{max-width:1000px;margin:auto}h1{font-size:28px}section{background:#1c202b;padding:24px;border-radius:14px;margin:24px 0}input,button{padding:12px;border-radius:8px;border:1px solid #515668;font:inherit}input{background:#fff;color:#111;max-width:100%}button{background:#c9d6ff;color:#111;cursor:pointer}table{width:100%;border-collapse:collapse}td,th{padding:12px;border-bottom:1px solid #3b3f4b;text-align:left}a{color:#b7caff}.note{color:#bfc3d0}.delete-btn{background:#8b2635;color:white;border-color:#bb5360}td form{margin:0}</style>
 <main><h1>FlipBook Dashboard</h1><p class="note">Private administrator area · Public books have permanent links.</p>
 <section><h2>Upload a PDF</h2><form method="post" action="/api/upload" enctype="multipart/form-data">
 <p><label>Title <input name="title" maxlength="120" required placeholder="My flipbook"></label></p>
 <p><label>PDF file <input name="pdf" type="file" accept="application/pdf,.pdf" required></label></p>
 <button type="submit">Create flipbook</button></form><p class="note">Maximum PDF size: 40 MB.</p></section>
-<section><h2>Your flipbooks</h2><div style="overflow:auto"><table><thead><tr><th>Title</th><th>Public link</th><th>Share</th><th>Created</th></tr></thead><tbody>""" + (rows or '<tr><td colspan="4">No flipbooks yet. Upload your first PDF above.</td></tr>') + """</tbody></table></div></section>
+<section><h2>Your flipbooks</h2><div style="overflow:auto"><table><thead><tr><th>Title</th><th>Public link</th><th>Share</th><th>Created</th><th>Delete</th></tr></thead><tbody>""" + (rows or '<tr><td colspan="5">No flipbooks yet. Upload your first PDF above.</td></tr>') + """</tbody></table></div></section>
 <p class="note">For permanent files on Railway, attach a volume at /data before uploading.</p></main></html>"""
             return self.send(200, page)
         if path.startswith(("/edit/", "/text-edit/", "/api/elements/", "/public/elements/", "/api/text-drafts/", "/api/viewer-settings/", "/public/viewer-settings/")):
@@ -149,6 +149,29 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = urlparse(self.path)
+        if path.path.startswith("/api/delete/"):
+            if not self.authorized():
+                return
+            bid = path.path.rsplit("/", 1)[-1]
+            if not re.fullmatch(r"[a-f0-9]{24}", bid):
+                return self.send(404, "Not found", "text/plain")
+            origin = self.headers.get("Origin")
+            host = self.headers.get("Host", "")
+            if origin and origin not in ("https://" + host, "http://" + host):
+                return self.send(403, "Invalid origin", "text/plain")
+            with sqlite3.connect(DB) as db:
+                row = db.execute("SELECT filename FROM books WHERE id=?", (bid,)).fetchone()
+                if not row:
+                    return self.send(404, "Not found", "text/plain")
+                db.execute("DELETE FROM books WHERE id=?", (bid,))
+            for file in (PDFS / row[0], ELEMENTS / (bid + ".json"),
+                         DRAFTS / (bid + ".json"), SETTINGS / (bid + ".json")):
+                file.unlink(missing_ok=True)
+            self.send_response(303)
+            self.send_header("Location", "/admin")
+            self.send_header("Content-Length", "0")
+            self.end_headers()
+            return
         if path.path.startswith("/api/viewer-settings/"):
             if not self.authorized():
                 return
