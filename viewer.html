@@ -12,8 +12,8 @@
 <header><h1>FlipBook</h1><span>Powered by GrabFold</span></header>
 <main>
 <p id="status">Loading sample PDF…</p><p id="error" role="alert"></p>
-<div class="reader"><button id="prev" class="side-nav prev" disabled>← Previous</button><div id="book" class="book" aria-label="PDF flipbook"></div><button id="next" class="side-nav next" disabled>Next →</button></div><div id="where" class="page-count" role="status">Loading…</div><div id="jumpControls" class="page-count" hidden><button id="jumpBack" type="button">← Back to previous page</button></div>
-<div class="settings"><label><input id="curl" type="checkbox" checked> 3D page curl</label><label><input id="sound" type="checkbox" checked> Page-turn sound</label></div>
+<div class="reader"><button id="prev" class="side-nav prev" disabled>← Previous</button><div id="book" class="book" aria-label="PDF flipbook"></div><button id="next" class="side-nav next" disabled>Next →</button></div><div id="where" class="page-count" role="status">Loading…</div><div class="page-count"><button id="firstPage" type="button" title="Jump to beginning">⇤ Beginning</button> <button id="lastPage" type="button" title="Jump to end">End ⇥</button></div><div id="jumpControls" class="page-count" hidden><button id="jumpBack" type="button">← Back to previous page</button></div>
+<div class="settings"><label id="curlSetting" hidden><input id="curl" type="checkbox" checked> 3D page curl</label><label><input id="sound" type="checkbox" checked> Page-turn sound</label></div>
 </main><div id="videoModal" class="video-modal"><div class="video-box"><button id="closeVideo">Close ✕</button><div id="videoFrame"></div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="/draft-page.js"></script>
@@ -31,8 +31,8 @@ const url=new URLSearchParams(location.search).get("pdf") || "https://mozilla.gi
 const pdf=await pdfjs.getDocument({url}).promise;
 const count=pdf.numPages;
 const bookId=location.pathname.match(/^\/b\/([a-f0-9]{24})$/)?.[1];
-let overlays=[],textDrafts={},manualTurn=false;
-if(bookId){try{const r=await fetch("/public/viewer-settings/"+bookId);if(r.ok)manualTurn=(await r.json()).manual_turn===true}catch(e){console.warn("Viewer settings unavailable",e)}}
+let overlays=[],textDrafts={},manualTurn=false,showCurl=false;
+if(bookId){try{const r=await fetch("/public/viewer-settings/"+bookId);if(r.ok){const settings=await r.json();manualTurn=settings.manual_turn===true;showCurl=settings.show_curl===true}}catch(e){console.warn("Viewer settings unavailable",e)}}
 if(bookId){try{const r=await fetch("/public/text-drafts/"+bookId);if(r.ok)textDrafts=await r.json()}catch(e){console.warn("Text drafts unavailable",e)}}
 if(bookId){try{const r=await fetch('/public/elements/'+bookId);if(r.ok)overlays=await r.json()}catch(e){console.warn('Overlays unavailable',e)}}
 function videoEmbed(url){
@@ -136,7 +136,7 @@ const i=indexOf(page);return i===null||i>=count?null:canvasFor(i);
 const sound=createPageTurnSound({takes:defaultPageTurnTakes});
 const book=new Grabfold(document.getElementById("book"),{
 sheets:Math.ceil(count/2),covers:"none",pageRatio:first.width/first.height,
-foldRenderer:curl,sound,gestures:manualTurn,flick:false,grabBlock:false,commitAt:0.5,render(slot,page){
+foldRenderer:showCurl?curl:null,sound,gestures:manualTurn,flick:false,grabBlock:false,commitAt:0.5,render(slot,page){
 const i=indexOf(page);if(i===null||i>=count)return;
 let disposed=false;slot.dataset.flipbookPageIndex=String(i);
 void canvasFor(i).then(async canvas=>{
@@ -164,7 +164,9 @@ document.getElementById("next").disabled=!book.canNext();
 book.on("change",()=>{update();pauseHiddenMedia()});update();
 document.getElementById("prev").onclick=()=>book.prev();
 document.getElementById("next").onclick=()=>book.next();
-const curlInput=document.getElementById("curl");curlInput.disabled=!curl;curlInput.checked=!!curl;
+document.getElementById("firstPage").onclick=()=>book.jumpTo(0);
+document.getElementById("lastPage").onclick=()=>book.jumpTo(Math.max(0,Math.ceil(count/2)-1));
+const curlInput=document.getElementById("curl");document.getElementById("curlSetting").hidden=!showCurl;curlInput.disabled=!curl;curlInput.checked=showCurl&&!!curl;
 curlInput.onchange=e=>book.setOptions({foldRenderer:e.target.checked?curl:null});
 document.getElementById("sound").onchange=e=>sound.muted=!e.target.checked;
 const manualInput={checked:manualTurn};
