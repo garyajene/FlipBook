@@ -24,6 +24,8 @@ ELEMENTS = DATA / "elements"
 ELEMENTS.mkdir(exist_ok=True)
 DRAFTS = DATA / "text_drafts"
 DRAFTS.mkdir(exist_ok=True)
+SETTINGS = DATA / "viewer_settings"
+SETTINGS.mkdir(exist_ok=True)
 PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 MAX_BYTES = 40 * 1024 * 1024
 with sqlite3.connect(DB) as db:
@@ -80,10 +82,10 @@ class Handler(BaseHTTPRequestHandler):
 <section><h2>Your flipbooks</h2><div style="overflow:auto"><table><thead><tr><th>Title</th><th>Public link</th><th>Share</th><th>Created</th></tr></thead><tbody>""" + (rows or '<tr><td colspan="4">No flipbooks yet. Upload your first PDF above.</td></tr>') + """</tbody></table></div></section>
 <p class="note">For permanent files on Railway, attach a volume at /data before uploading.</p></main></html>"""
             return self.send(200, page)
-        if path.startswith(("/edit/", "/text-edit/", "/api/elements/", "/public/elements/", "/api/text-drafts/")):
+        if path.startswith(("/edit/", "/text-edit/", "/api/elements/", "/public/elements/", "/api/text-drafts/", "/api/viewer-settings/", "/public/viewer-settings/")):
             is_edit = path.startswith("/edit/")
             is_text_edit = path.startswith("/text-edit/")
-            is_private = is_edit or is_text_edit or path.startswith("/api/elements/") or path.startswith("/api/text-drafts/")
+            is_private = is_edit or is_text_edit or path.startswith("/api/elements/") or path.startswith("/api/text-drafts/") or path.startswith("/api/viewer-settings/")
             if is_private and not self.authorized():
                 return
             bid = path.rsplit("/", 1)[-1]
@@ -97,6 +99,9 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, (ROOT / "editor.html").read_bytes())
             if is_text_edit:
                 return self.send(200, (ROOT / "text-workspace.html").read_bytes())
+            if path.startswith(("/api/viewer-settings/", "/public/viewer-settings/")):
+                file = SETTINGS / (bid + ".json")
+                return self.send(200, file.read_bytes() if file.exists() else b'{"manual_turn":false}', "application/json")
             if path.startswith("/api/text-drafts/"):
                 file = DRAFTS / (bid + ".json")
                 return self.send(200, file.read_bytes() if file.exists() else b"{}", "application/json")
@@ -143,7 +148,31 @@ class Handler(BaseHTTPRequestHandler):
         return self.send(404, "Not found", "text/plain")
 
     def do_POST(self):
-        path = urlparse(self.path).path
+        path = urlparse(self.path)
+        if path.path.startswith("/api/viewer-settings/"):
+            if not self.authorized():
+                return
+            bid = path.path.rsplit("/", 1)[-1]
+            if not re.fullmatch(r"[a-f0-9]{24}", bid):
+                return self.send(404, "Not found", "text/plain")
+            with sqlite3.connect(DB) as db:
+                if not db.execute("SELECT 1 FROM books WHERE id=?", (bid,)).fetchone():
+                    return self.send(404, "Not found", "text/plain")
+            try:
+                size = int(self.headers.get("Content-Length", "0"))
+                if not 0 < size <= 1024:
+                    raise ValueError("Invalid size")
+                payload = json.loads(self.rfile.read(size))
+                if not isinstance(payload, dict) or type(payload.get("manual_turn")) is not bool:
+                    raise ValueError("Invalid setting")
+                target = SETTINGS / (bid + ".json")
+                temp = SETTINGS / (bid + ".tmp")
+                temp.write_text(json.dumps({"manual_turn": payload["manual_turn"]}), encoding="utf-8")
+                temp.replace(target)
+            except (ValueError, TypeError) as exc:
+                return self.send(400, str(exc), "text/plain")
+            return self.send(200, '{"ok":true}', "application/json")
+        path = path.path
         if path.startswith("/api/text-drafts/"):
             if not self.authorized():
                 return
