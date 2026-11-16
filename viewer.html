@@ -152,7 +152,7 @@ return ()=>{disposed=true;slot.querySelectorAll('video').forEach(v=>v.pause());s
 }});
 const jumpHistory=[];
 function currentPdfPage(){const pages=[book.view.left,book.view.right].filter(Boolean).map(p=>indexOf(p)).filter(i=>i!==null&&i<count);return pages.length?Math.min(...pages)+1:1}
-function jumpToPdfPage(page,remember=true){if(!Number.isInteger(page)||page<1||page>count)return;const from=currentPdfPage();if(remember&&from!==page)jumpHistory.push(from);book.jumpTo(Math.floor((page-1)/2)-1);document.getElementById('jumpControls').hidden=jumpHistory.length===0}
+function jumpToPdfPage(page,remember=true){if(!Number.isInteger(page)||page<1||page>count)return;const from=currentPdfPage();if(remember&&from!==page)jumpHistory.push(from);book.jumpTo(Math.floor((page-1)/2));document.getElementById('jumpControls').hidden=jumpHistory.length===0}
 document.getElementById('jumpBack').onclick=()=>{const page=jumpHistory.pop();if(page!==undefined)jumpToPdfPage(page,false);document.getElementById('jumpControls').hidden=jumpHistory.length===0};
 function update(){
 const {left,right}=book.view;
