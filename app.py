@@ -22,10 +22,6 @@ PDFS.mkdir(exist_ok=True)
 DB = DATA / "flipbooks.sqlite3"
 ELEMENTS = DATA / "elements"
 ELEMENTS.mkdir(exist_ok=True)
-DRAFTS = DATA / "text_drafts"
-DRAFTS.mkdir(exist_ok=True)
-SETTINGS = DATA / "viewer_settings"
-SETTINGS.mkdir(exist_ok=True)
 PASSWORD = os.environ.get("ADMIN_PASSWORD", "")
 MAX_BYTES = 40 * 1024 * 1024
 with sqlite3.connect(DB) as db:
@@ -38,7 +34,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", mime)
         self.send_header("Content-Length", str(len(content)))
         self.send_header("X-Content-Type-Options", "nosniff")
-        self.send_header("Referrer-Policy", "strict-origin-when-cross-origin")
+        self.send_header("Referrer-Policy", "no-referrer")
         self.send_header("Cache-Control", "no-store")
         for k, v in (headers or {}).items():
             self.send_header(k, v)
@@ -71,21 +67,21 @@ class Handler(BaseHTTPRequestHandler):
             rows = "".join(
                 '<tr><td>' + html.escape(title) + '</td><td><a target="_blank" href="/b/' + bid +
                 '">Open flipbook</a> · <a href="/edit/' + bid + '">Edit</a></td><td><button type="button" onclick="navigator.clipboard.writeText(location.origin+\'/b/' + bid + '\')">Copy link</button></td><td>' +
-                html.escape(created) + '</td><td><form method="post" action="/api/delete/' + bid + '" onsubmit="return confirm(&quot;Permanently delete this flipbook? This cannot be undone, and its public link will stop working.&quot;)"><button type="submit" class="delete-btn">Delete</button></form></td></tr>' for bid, title, created in books)
+                html.escape(created) + '</td></tr>' for bid, title, created in books)
             page = """<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>FlipBook Admin</title>
-<style>body{font:16px system-ui;background:#11131b;color:#f7f7fb;margin:0;padding:32px}main{max-width:1000px;margin:auto}h1{font-size:28px}section{background:#1c202b;padding:24px;border-radius:14px;margin:24px 0}input,button{padding:12px;border-radius:8px;border:1px solid #515668;font:inherit}input{background:#fff;color:#111;max-width:100%}button{background:#c9d6ff;color:#111;cursor:pointer}table{width:100%;border-collapse:collapse}td,th{padding:12px;border-bottom:1px solid #3b3f4b;text-align:left}a{color:#b7caff}.note{color:#bfc3d0}.delete-btn{background:#8b2635;color:white;border-color:#bb5360}td form{margin:0}</style>
+<style>body{font:16px system-ui;background:#11131b;color:#f7f7fb;margin:0;padding:32px}main{max-width:1000px;margin:auto}h1{font-size:28px}section{background:#1c202b;padding:24px;border-radius:14px;margin:24px 0}input,button{padding:12px;border-radius:8px;border:1px solid #515668;font:inherit}input{background:#fff;color:#111;max-width:100%}button{background:#c9d6ff;color:#111;cursor:pointer}table{width:100%;border-collapse:collapse}td,th{padding:12px;border-bottom:1px solid #3b3f4b;text-align:left}a{color:#b7caff}.note{color:#bfc3d0}</style>
 <main><h1>FlipBook Dashboard</h1><p class="note">Private administrator area · Public books have permanent links.</p>
 <section><h2>Upload a PDF</h2><form method="post" action="/api/upload" enctype="multipart/form-data">
 <p><label>Title <input name="title" maxlength="120" required placeholder="My flipbook"></label></p>
 <p><label>PDF file <input name="pdf" type="file" accept="application/pdf,.pdf" required></label></p>
 <button type="submit">Create flipbook</button></form><p class="note">Maximum PDF size: 40 MB.</p></section>
-<section><h2>Your flipbooks</h2><div style="overflow:auto"><table><thead><tr><th>Title</th><th>Public link</th><th>Share</th><th>Created</th><th>Delete</th></tr></thead><tbody>""" + (rows or '<tr><td colspan="5">No flipbooks yet. Upload your first PDF above.</td></tr>') + """</tbody></table></div></section>
+<section><h2>Your flipbooks</h2><div style="overflow:auto"><table><thead><tr><th>Title</th><th>Public link</th><th>Share</th><th>Created</th></tr></thead><tbody>""" + (rows or '<tr><td colspan="4">No flipbooks yet. Upload your first PDF above.</td></tr>') + """</tbody></table></div></section>
 <p class="note">For permanent files on Railway, attach a volume at /data before uploading.</p></main></html>"""
             return self.send(200, page)
-        if path.startswith(("/edit/", "/text-edit/", "/api/elements/", "/public/elements/", "/api/text-drafts/", "/api/viewer-settings/", "/public/viewer-settings/")):
+        if path.startswith(("/edit/", "/text-edit/", "/api/elements/", "/public/elements/")):
             is_edit = path.startswith("/edit/")
             is_text_edit = path.startswith("/text-edit/")
-            is_private = is_edit or is_text_edit or path.startswith("/api/elements/") or path.startswith("/api/text-drafts/") or path.startswith("/api/viewer-settings/")
+            is_private = is_edit or is_text_edit or path.startswith("/api/elements/")
             if is_private and not self.authorized():
                 return
             bid = path.rsplit("/", 1)[-1]
@@ -99,23 +95,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self.send(200, (ROOT / "editor.html").read_bytes())
             if is_text_edit:
                 return self.send(200, (ROOT / "text-workspace.html").read_bytes())
-            if path.startswith(("/api/viewer-settings/", "/public/viewer-settings/")):
-                file = SETTINGS / (bid + ".json")
-                return self.send(200, file.read_bytes() if file.exists() else b'{"manual_turn":false,"show_curl":false}', "application/json")
-            if path.startswith("/api/text-drafts/"):
-                file = DRAFTS / (bid + ".json")
-                return self.send(200, file.read_bytes() if file.exists() else b"{}", "application/json")
             file = ELEMENTS / (bid + ".json")
             return self.send(200, file.read_bytes() if file.exists() else b"[]", "application/json")
-        if path.startswith("/public/text-drafts/"):
-            bid = path.rsplit("/", 1)[-1]
-            if not re.fullmatch(r"[a-f0-9]{24}", bid):
-                return self.send(404, "Not found", "text/plain")
-            with sqlite3.connect(DB) as db:
-                if not db.execute("SELECT 1 FROM books WHERE id=?", (bid,)).fetchone():
-                    return self.send(404, "Not found", "text/plain")
-            file = DRAFTS / (bid + ".json")
-            return self.send(200, file.read_bytes() if file.exists() else b"{}", "application/json")
         if path.startswith("/b/"):
             bid = path[3:]
             if not re.fullmatch(r"[a-f0-9]{24}", bid):
@@ -141,84 +122,12 @@ class Handler(BaseHTTPRequestHandler):
             if not file.is_file():
                 return self.send(404, "PDF missing", "text/plain")
             return self.send(200, file.read_bytes(), "application/pdf", {"Content-Disposition": "inline"})
-        if path == "/draft-page.js":
-            return self.send(200, (ROOT / "draft-page.js").read_bytes(), "application/javascript")
         if path == "/viewer.html":
             return self.send(200, (ROOT / "viewer.html").read_bytes())
         return self.send(404, "Not found", "text/plain")
 
     def do_POST(self):
-        path = urlparse(self.path)
-        if path.path.startswith("/api/delete/"):
-            if not self.authorized():
-                return
-            bid = path.path.rsplit("/", 1)[-1]
-            if not re.fullmatch(r"[a-f0-9]{24}", bid):
-                return self.send(404, "Not found", "text/plain")
-            origin = self.headers.get("Origin")
-            host = self.headers.get("Host", "")
-            if origin and origin not in ("https://" + host, "http://" + host):
-                return self.send(403, "Invalid origin", "text/plain")
-            with sqlite3.connect(DB) as db:
-                row = db.execute("SELECT filename FROM books WHERE id=?", (bid,)).fetchone()
-                if not row:
-                    return self.send(404, "Not found", "text/plain")
-                db.execute("DELETE FROM books WHERE id=?", (bid,))
-            for file in (PDFS / row[0], ELEMENTS / (bid + ".json"),
-                         DRAFTS / (bid + ".json"), SETTINGS / (bid + ".json")):
-                file.unlink(missing_ok=True)
-            self.send_response(303)
-            self.send_header("Location", "/admin")
-            self.send_header("Content-Length", "0")
-            self.end_headers()
-            return
-        if path.path.startswith("/api/viewer-settings/"):
-            if not self.authorized():
-                return
-            bid = path.path.rsplit("/", 1)[-1]
-            if not re.fullmatch(r"[a-f0-9]{24}", bid):
-                return self.send(404, "Not found", "text/plain")
-            with sqlite3.connect(DB) as db:
-                if not db.execute("SELECT 1 FROM books WHERE id=?", (bid,)).fetchone():
-                    return self.send(404, "Not found", "text/plain")
-            try:
-                size = int(self.headers.get("Content-Length", "0"))
-                if not 0 < size <= 1024:
-                    raise ValueError("Invalid size")
-                payload = json.loads(self.rfile.read(size))
-                if not isinstance(payload, dict) or type(payload.get("manual_turn")) is not bool or type(payload.get("show_curl")) is not bool:
-                    raise ValueError("Invalid setting")
-                target = SETTINGS / (bid + ".json")
-                temp = SETTINGS / (bid + ".tmp")
-                temp.write_text(json.dumps({"manual_turn": payload["manual_turn"], "show_curl": payload["show_curl"]}), encoding="utf-8")
-                temp.replace(target)
-            except (ValueError, TypeError) as exc:
-                return self.send(400, str(exc), "text/plain")
-            return self.send(200, '{"ok":true}', "application/json")
-        path = path.path
-        if path.startswith("/api/text-drafts/"):
-            if not self.authorized():
-                return
-            bid = path.rsplit("/", 1)[-1]
-            if not re.fullmatch(r"[a-f0-9]{24}", bid):
-                return self.send(404, "Not found", "text/plain")
-            with sqlite3.connect(DB) as db:
-                if not db.execute("SELECT 1 FROM books WHERE id=?", (bid,)).fetchone():
-                    return self.send(404, "Not found", "text/plain")
-            try:
-                size = int(self.headers.get("Content-Length", "0"))
-                if not 0 < size <= 8 * 1024 * 1024:
-                    raise ValueError("Draft too large")
-                payload = json.loads(self.rfile.read(size))
-                if not isinstance(payload, dict) or len(payload) > 500 or any(not str(k).isdigit() or int(k) < 1 or not isinstance(v, str) or len(v.encode('utf-8')) > 4 * 1024 * 1024 for k,v in payload.items()):
-                    raise ValueError("Invalid draft")
-                target = DRAFTS / (bid + ".json")
-                temp = DRAFTS / (bid + ".tmp")
-                temp.write_text(json.dumps(payload), encoding="utf-8")
-                temp.replace(target)
-            except (ValueError, TypeError) as exc:
-                return self.send(400, str(exc), "text/plain")
-            return self.send(200, '{"ok":true}', "application/json")
+        path = urlparse(self.path).path
         if path.startswith("/api/elements/"):
             if not self.authorized():
                 return
@@ -237,7 +146,7 @@ class Handler(BaseHTTPRequestHandler):
                 if not isinstance(payload, list) or len(payload) > 300:
                     raise ValueError("Invalid elements")
                 for e in payload:
-                    if not isinstance(e, dict) or e.get("type") not in ("text", "link", "page-link", "video", "youtube-link", "aws-link") or type(e.get("page")) is not int or e["page"] < 1:
+                    if not isinstance(e, dict) or e.get("type") not in ("text", "link", "video") or type(e.get("page")) is not int or e["page"] < 1:
                         raise ValueError("Invalid element")
                     for key in ("x", "y", "w", "h", "size"):
                         if type(e.get(key)) not in (int, float) or not 0 <= e[key] <= 120:
@@ -245,9 +154,7 @@ class Handler(BaseHTTPRequestHandler):
                     for key in ("label", "url", "font", "color", "id"):
                         if not isinstance(e.get(key), str) or len(e[key]) > 2000:
                             raise ValueError("Invalid field")
-                    if e["type"] == "page-link" and (type(e.get("targetPage")) is not int or e["targetPage"] < 1 or e["targetPage"] > 100000):
-                        raise ValueError("Invalid destination page")
-                    if e["type"] in ("link", "video", "youtube-link", "aws-link") and e["url"] and not e["url"].startswith(("https://", "http://")):
+                    if e["type"] in ("link", "video") and e["url"] and not e["url"].startswith(("https://", "http://")):
                         raise ValueError("Only HTTP(S) URLs allowed")
                 target = ELEMENTS / (bid + ".json")
                 temp = ELEMENTS / (bid + ".tmp")
