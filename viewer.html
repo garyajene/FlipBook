@@ -6,6 +6,7 @@
 <style>
 :root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#12141b;color:#f3f3f5}
 *{box-sizing:border-box}body{margin:0;min-height:100vh}header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid #303340}h1{font-size:19px;margin:0;font-weight:650}main{max-width:1100px;margin:0 auto;padding:25px 18px 60px}#status{text-align:center;color:#bfc2cf;min-height:24px}.reader{display:grid;grid-template-columns:max-content minmax(0,920px) max-content;align-items:center;justify-content:center;column-gap:24px;width:100%;margin:18px auto}.book{width:100%;min-width:0;margin:0;filter:drop-shadow(0 15px 28px #0009)}.side-nav{position:static;transform:none;z-index:10;white-space:nowrap}.page-count{text-align:center;margin:16px auto;color:#e7e8ee}@media(max-width:700px){.reader{grid-template-columns:1fr 1fr;row-gap:14px}.book{grid-column:1/-1;grid-row:1}.side-nav{grid-row:2}.side-nav.prev{grid-column:1;justify-self:start}.side-nav.next{grid-column:2;justify-self:end}}.book canvas{display:block;width:100%;height:100%}.overlay-item{position:absolute;display:flex;align-items:center;justify-content:center;overflow:hidden;line-height:1.2;z-index:2}.overlay-item.text{justify-content:flex-start;white-space:pre-wrap}.overlay-item.video{background:#151b2cdd;color:white;border:1px solid #fff5;cursor:pointer}.overlay-item.link{border:1px dashed #438cff66;cursor:pointer}.overlay-item.page-link{background:transparent;cursor:pointer}.overlay-item.youtube-link,.overlay-item.aws-link{background:transparent;cursor:pointer}.inline-video-player{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;z-index:5}.pdf-annotation-link{position:absolute;z-index:2;display:block;cursor:pointer;background:transparent}.video-modal{position:fixed;inset:0;background:#000d;z-index:100;display:none;align-items:center;justify-content:center;padding:25px}.video-modal.active{display:flex}.video-box{width:min(900px,95vw);background:#171b27;padding:15px;border-radius:12px}.video-box iframe{width:100%;aspect-ratio:16/9;border:0}.video-box button{float:right;margin-bottom:10px}.controls{display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap;margin:22px auto}button{background:#292d3a;color:#fff;border:1px solid #4a4f62;border-radius:8px;padding:11px 18px;cursor:pointer}button:disabled{opacity:.4;cursor:default}#where{min-width:150px;text-align:center}.settings{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;color:#bfc2cf;font-size:14px}a{color:#cbd7ff}#error{color:#ffb2b2;text-align:center;white-space:pre-wrap}
+.draft-page{position:absolute;inset:0;z-index:3;background:white;color:#111;overflow:auto;padding:7% 8%;font:clamp(8px,1.4vw,16px)/1.5 Arial,sans-serif;overflow-wrap:anywhere}.draft-page p{margin:0 0 1em}.draft-page .draft-video{display:block;background:#e8efff;border:1px solid #9ebeff;padding:10px;text-align:center;margin:12px 0}.draft-page .draft-video img{display:block;max-width:100%;max-height:180px;margin:auto}.draft-page .draft-video a{color:#1646a0;cursor:pointer}.draft-page .draft-video-player{position:relative;display:block;width:100%;height:auto;aspect-ratio:16/9;border:0}
 </style>
 </head>
 <body>
@@ -104,6 +105,44 @@ a.setAttribute('aria-label','Open PDF link');
 a.style.left=link.x+'%';a.style.top=link.y+'%';a.style.width=link.w+'%';a.style.height=link.h+'%';
 slot.append(a);
 }
+}
+// Display saved text-editor drafts as readable pages with playable video thumbnails.
+function FlipBookDraftPage(html){
+ const layer=document.createElement('div');
+ layer.className='draft-page';
+ const doc=new DOMParser().parseFromString('<div>'+html+'</div>','text/html');
+ const source=doc.body.firstElementChild;
+ const allowed=new Set(['P','DIV','SPAN','B','STRONG','I','EM','U','BR','A','IMG','SMALL','H1','H2','H3','UL','OL','LI']);
+ function clean(node){
+  if(node.nodeType===Node.TEXT_NODE)return document.createTextNode(node.textContent);
+  if(node.nodeType!==Node.ELEMENT_NODE)return document.createDocumentFragment();
+  if(!allowed.has(node.tagName)){const frag=document.createDocumentFragment();node.childNodes.forEach(c=>frag.append(clean(c)));return frag}
+  const el=document.createElement(node.tagName.toLowerCase());
+  if(node.classList.contains('video'))el.className='draft-video';
+  if(node.tagName==='IMG'&&/^(data:image\/(png|jpeg|webp);base64,|https:\/\/)/i.test(node.getAttribute('src')||'')){el.src=node.getAttribute('src');el.alt='Video thumbnail'}
+  if(node.tagName==='A'){const url=safeExternalUrl(node.getAttribute('href'));if(url){el.href=url;el.rel='noopener noreferrer'} }
+  if(node.hasAttribute('style')){const style=node.style;for(const prop of ['font-weight','font-style','font-size','font-family','color','text-decoration','text-align']){const value=style.getPropertyValue(prop);if(value&&!/[<>;{}]/.test(value))el.style.setProperty(prop,value)}}
+  node.childNodes.forEach(c=>el.append(clean(c)));
+  return el;
+ }
+ source.childNodes.forEach(c=>layer.append(clean(c)));
+ layer.querySelectorAll('.draft-video a[href]').forEach(a=>{
+  a.addEventListener('click',ev=>{
+   ev.preventDefault();ev.stopPropagation();
+   const url=a.getAttribute('href'),source=inlineVideoSource('youtube-link',url);
+   const vimeo=videoEmbed(url);
+   const mp4=/^https:\/\/[^\s]+\.mp4(?:\?[^\s]*)?$/i.test(url)?url:null;
+   const player=document.createElement(mp4?'video':'iframe');
+   if(mp4){player.src=mp4;player.controls=true;player.autoplay=true;player.playsInline=true}
+   else if(source){player.src=source.url}
+   else if(vimeo){player.src=vimeo+(vimeo.includes('?')?'&':'?')+'autoplay=1'}
+   else return;
+   if(!mp4){player.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';player.allowFullscreen=true}
+   player.className='draft-video-player inline-video-player';
+   a.replaceWith(player);
+  });
+ });
+ return layer;
 }
 // Pause media on pages that leave the visible spread; do not rebuild the viewer.
 function pauseHiddenMedia(){
