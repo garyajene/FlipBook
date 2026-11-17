@@ -5,19 +5,20 @@
 <title>FlipBook — GrabFold Viewer</title>
 <style>
 :root{color-scheme:dark;font-family:system-ui,-apple-system,sans-serif;background:#12141b;color:#f3f3f5}
-*{box-sizing:border-box}body{margin:0;min-height:100vh}header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid #303340}h1{font-size:19px;margin:0;font-weight:650}main{max-width:1100px;margin:0 auto;padding:25px 18px 60px}#status{text-align:center;color:#bfc2cf;min-height:24px}.reader{display:grid;grid-template-columns:max-content minmax(0,920px) max-content;align-items:center;justify-content:center;column-gap:24px;width:100%;margin:18px auto}.book{width:100%;min-width:0;margin:0;filter:drop-shadow(0 15px 28px #0009)}.side-nav{position:static;transform:none;z-index:10;white-space:nowrap}.page-count{text-align:center;margin:16px auto;color:#e7e8ee}@media(max-width:700px){.reader{grid-template-columns:1fr 1fr;row-gap:14px}.book{grid-column:1/-1;grid-row:1}.side-nav{grid-row:2}.side-nav.prev{grid-column:1;justify-self:start}.side-nav.next{grid-column:2;justify-self:end}}.book canvas{display:block;width:100%;height:100%}.overlay-item{position:absolute;display:flex;align-items:center;justify-content:center;overflow:hidden;line-height:1.2;z-index:6}.overlay-item.text{justify-content:flex-start;white-space:pre-wrap}.overlay-item.video{background:#151b2cdd;color:white;border:1px solid #fff5;cursor:pointer}.overlay-item.link{border:1px dashed #438cff66;cursor:pointer}.overlay-item.page-link{background:transparent;cursor:pointer}.overlay-item.youtube-link,.overlay-item.aws-link{background:transparent;cursor:pointer}.inline-video-player{position:absolute;inset:0;width:100%;height:100%;border:0;background:#000;z-index:5}.pdf-annotation-link{position:absolute;z-index:2;display:block;cursor:pointer;background:transparent}.video-modal{position:fixed;inset:0;background:#000d;z-index:100;display:none;align-items:center;justify-content:center;padding:25px}.video-modal.active{display:flex}.video-box{width:min(900px,95vw);background:#171b27;padding:15px;border-radius:12px}.video-box iframe{width:100%;aspect-ratio:16/9;border:0}.video-box button{float:right;margin-bottom:10px}.controls{display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap;margin:22px auto}button{background:#292d3a;color:#fff;border:1px solid #4a4f62;border-radius:8px;padding:11px 18px;cursor:pointer}button:disabled{opacity:.4;cursor:default}#where{min-width:150px;text-align:center}.settings{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;color:#bfc2cf;font-size:14px}a{color:#cbd7ff}#error{color:#ffb2b2;text-align:center;white-space:pre-wrap}
-.draft-page{position:absolute;inset:0;z-index:3;background:white;color:#111;overflow:auto;padding:7% 8%;font:clamp(8px,1.4vw,16px)/1.5 Arial,sans-serif;overflow-wrap:anywhere}.draft-page p{margin:0 0 1em}.draft-page .draft-video{display:block;background:#e8efff;border:1px solid #9ebeff;padding:10px;text-align:center;margin:12px 0}.draft-page .draft-video img{display:block;max-width:100%;max-height:180px;margin:auto}.draft-page .draft-video a{color:#1646a0;cursor:pointer}.draft-page .draft-video-player{position:relative;display:block;width:100%;height:auto;aspect-ratio:16/9;border:0}
+*{box-sizing:border-box}body{margin:0;min-height:100vh}header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid #303340}h1{font-size:19px;margin:0;font-weight:650}main{max-width:1100px;margin:0 auto;padding:25px 18px 60px}#status{text-align:center;color:#bfc2cf;min-height:24px}.book{width:100%;max-width:920px;margin:18px auto;filter:drop-shadow(0 15px 28px #0009)}.book canvas{display:block;width:100%;height:100%}.overlay-item{position:absolute;display:flex;align-items:center;justify-content:center;overflow:hidden;line-height:1.2;z-index:2}.overlay-item.text{justify-content:flex-start;white-space:pre-wrap}.overlay-item.video{background:#151b2cdd;color:white;border:1px solid #fff5;cursor:pointer}.overlay-item.link{border:1px dashed #438cff66;cursor:pointer}.video-modal{position:fixed;inset:0;background:#000d;z-index:100;display:none;align-items:center;justify-content:center;padding:25px}.video-modal.active{display:flex}.video-box{width:min(900px,95vw);background:#171b27;padding:15px;border-radius:12px}.video-box iframe{width:100%;aspect-ratio:16/9;border:0}.video-box button{float:right;margin-bottom:10px}.controls{display:flex;gap:14px;justify-content:center;align-items:center;flex-wrap:wrap;margin:22px auto}button{background:#292d3a;color:#fff;border:1px solid #4a4f62;border-radius:8px;padding:11px 18px;cursor:pointer}button:disabled{opacity:.4;cursor:default}#where{min-width:150px;text-align:center}.settings{display:flex;justify-content:center;gap:20px;flex-wrap:wrap;color:#bfc2cf;font-size:14px}a{color:#cbd7ff}#error{color:#ffb2b2;text-align:center;white-space:pre-wrap}
 </style>
 </head>
 <body>
 <header><h1>FlipBook</h1><span>Powered by GrabFold</span></header>
 <main>
 <p id="status">Loading sample PDF…</p><p id="error" role="alert"></p>
-<div class="reader"><button id="prev" class="side-nav prev" disabled>← Previous</button><div id="book" class="book" aria-label="PDF flipbook"></div><button id="next" class="side-nav next" disabled>Next →</button></div><div id="where" class="page-count" role="status">Loading…</div><div class="page-count"><button id="firstPage" type="button" title="Jump to beginning">⇤ Beginning</button> <button id="lastPage" type="button" title="Jump to end">End ⇥</button></div><div id="jumpControls" class="page-count" hidden><button id="jumpBack" type="button">← Back to previous page</button></div>
-<div class="settings"><label id="curlSetting" hidden><input id="curl" type="checkbox" checked> 3D page curl</label><label><input id="sound" type="checkbox" checked> Page-turn sound</label></div>
+<div id="book" class="book" aria-label="PDF flipbook"></div>
+<nav class="controls" aria-label="Flipbook navigation">
+<button id="prev" disabled>← Previous</button><span id="where">Loading…</span><button id="next" disabled>Next →</button>
+</nav>
+<div class="settings"><label><input id="curl" type="checkbox" checked> 3D page curl</label><label><input id="sound" type="checkbox" checked> Page-turn sound</label></div>
 </main><div id="videoModal" class="video-modal"><div class="video-box"><button id="closeVideo">Close ✕</button><div id="videoFrame"></div></div></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
-<script src="/draft-page.js"></script>
 <script type="module">
 import { Grabfold } from "https://esm.sh/grabfold@0.1.0";
 import { supportsWebGL, webglFold } from "https://esm.sh/grabfold@0.1.0/webgl";
@@ -32,9 +33,7 @@ const url=new URLSearchParams(location.search).get("pdf") || "https://mozilla.gi
 const pdf=await pdfjs.getDocument({url}).promise;
 const count=pdf.numPages;
 const bookId=location.pathname.match(/^\/b\/([a-f0-9]{24})$/)?.[1];
-let overlays=[],textDrafts={},manualTurn=false,showCurl=false;
-if(bookId){try{const r=await fetch("/public/viewer-settings/"+bookId);if(r.ok){const settings=await r.json();manualTurn=settings.manual_turn===true;showCurl=settings.show_curl===true}}catch(e){console.warn("Viewer settings unavailable",e)}}
-if(bookId){try{const r=await fetch("/public/text-drafts/"+bookId);if(r.ok)textDrafts=await r.json()}catch(e){console.warn("Text drafts unavailable",e)}}
+let overlays=[];
 if(bookId){try{const r=await fetch('/public/elements/'+bookId);if(r.ok)overlays=await r.json()}catch(e){console.warn('Overlays unavailable',e)}}
 function videoEmbed(url){
 try{const u=new URL(url);if(!['https:','http:'].includes(u.protocol))return null;
@@ -47,112 +46,14 @@ const modal=document.getElementById('videoModal'),frame=document.getElementById(
 document.getElementById('closeVideo').onclick=()=>{modal.classList.remove('active');frame.replaceChildren()};
 modal.onclick=e=>{if(e.target===modal)document.getElementById('closeVideo').click()};
 function showVideo(url){const embed=videoEmbed(url);if(embed){const iframe=document.createElement('iframe');iframe.src=embed;iframe.allow='autoplay; encrypted-media; picture-in-picture';iframe.allowFullscreen=true;frame.replaceChildren(iframe);modal.classList.add('active')}else window.open(url,'_blank','noopener,noreferrer')}
-function inlineVideoSource(type,raw){
-try{
-const u=new URL(raw);if(!['https:','http:'].includes(u.protocol))return null;
-if(type==='youtube-link'){
-let id=null;
-if(['youtube.com','www.youtube.com','m.youtube.com'].includes(u.hostname)){id=u.searchParams.get('v');if(!id&&u.pathname.split('/').filter(Boolean).length===2&&['shorts','embed'].includes(u.pathname.split('/')[1]))id=u.pathname.split('/')[2]}
-else if(u.hostname==='youtu.be')id=u.pathname.split('/')[1];
-return id&&id.length===11&&Array.from(id).every(c=>/[a-zA-Z0-9_-]/.test(c))?{type:'iframe',url:'https://www.youtube-nocookie.com/embed/'+id+'?autoplay=1&playsinline=1&rel=0&enablejsapi=1'}:null;
-}
-if(type==='aws-link'&&u.protocol==='https:'&&u.pathname.toLowerCase().endsWith('.mp4'))return {type:'mp4',url:u.href};
-}catch(e){}return null;
-}
-function playInlineVideo(area,type,url){
-const source=inlineVideoSource(type,url);if(!source)return;
-let player;
-if(source.type==='mp4'){player=document.createElement('video');player.src=source.url;player.controls=true;player.autoplay=true;player.playsInline=true}
-else{player=document.createElement('iframe');player.src=source.url;player.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';player.allowFullscreen=true;player.referrerPolicy='strict-origin-when-cross-origin'}
-player.className='inline-video-player';area.replaceChildren(player);
-}
 function addOverlays(slot,i){
 for(const e of overlays.filter(e=>e.page===i+1)){
-const n=document.createElement(e.type==='link'?'a':e.type==='page-link'?'button':'div');n.className='overlay-item '+e.type;
+const n=document.createElement(e.type==='link'?'a':'div');n.className='overlay-item '+e.type;
 n.style.left=e.x+'%';n.style.top=e.y+'%';n.style.width=e.w+'%';n.style.height=e.h+'%';n.style.fontFamily=e.font||'Arial';n.style.fontSize=(e.size||22)+'px';n.style.color=e.type==='video'?'white':e.color||'#111';
-n.textContent=['youtube-link','aws-link','page-link'].includes(e.type)?'':e.label||'';if(e.type==='page-link'){n.type='button';n.title='Jump to page '+e.targetPage;n.setAttribute('aria-label','Jump to page '+e.targetPage);n.onclick=ev=>{ev.preventDefault();ev.stopPropagation();jumpToPdfPage(e.targetPage)}};if(['youtube-link','aws-link'].includes(e.type)&&e.url)n.onclick=ev=>{ev.stopPropagation();playInlineVideo(n,e.type,e.url)};if(e.type==='link'&&e.url){n.href=e.url;n.target='_blank';n.rel='noopener noreferrer'}
+n.textContent=e.label||'';if(e.type==='link'&&e.url){n.href=e.url;n.target='_blank';n.rel='noopener noreferrer'}
 if(e.type==='video'&&e.url)n.onclick=ev=>{ev.stopPropagation();showVideo(e.url)};
 slot.append(n);
 }
-}
-// Preserve existing external hyperlinks embedded in uploaded PDF pages.
-const annotationCache=new Map();
-function pdfLinksFor(index){
-if(!annotationCache.has(index))annotationCache.set(index,pdf.getPage(index+1).then(async page=>{
-const viewport=page.getViewport({scale:1});
-const annotations=await page.getAnnotations({intent:'display'});
-return annotations.filter(a=>a.subtype==='Link'&&a.url&&Array.isArray(a.rect)).map(a=>{
-const url=safeExternalUrl(a.url);
-if(!url)return null;
-const [x1,y1,x2,y2]=viewport.convertToViewportRectangle(a.rect);
-const left=Math.max(0,Math.min(x1,x2)),top=Math.max(0,Math.min(y1,y2));
-const right=Math.min(viewport.width,Math.max(x1,x2)),bottom=Math.min(viewport.height,Math.max(y1,y2));
-if(right<=left||bottom<=top)return null;
-return {url,x:100*left/viewport.width,y:100*top/viewport.height,w:100*(right-left)/viewport.width,h:100*(bottom-top)/viewport.height};
-}).filter(Boolean);
-}));
-return annotationCache.get(index);
-}
-function safeExternalUrl(raw){
-try{const u=new URL(raw);return ['https:','http:'].includes(u.protocol)?u.href:null}catch(e){return null}
-}
-async function addPdfLinks(slot,index){
-const links=await pdfLinksFor(index);
-for(const link of links){
-const a=document.createElement('a');a.className='pdf-annotation-link';
-a.href=link.url;a.target='_blank';a.rel='noopener noreferrer';
-a.setAttribute('aria-label','Open PDF link');
-a.style.left=link.x+'%';a.style.top=link.y+'%';a.style.width=link.w+'%';a.style.height=link.h+'%';
-slot.append(a);
-}
-}
-// Display saved text-editor drafts as readable pages with playable video thumbnails.
-function FlipBookDraftPage(html){
- const layer=document.createElement('div');
- layer.className='draft-page';
- const doc=new DOMParser().parseFromString('<div>'+html+'</div>','text/html');
- const source=doc.body.firstElementChild;
- const allowed=new Set(['P','DIV','SPAN','B','STRONG','I','EM','U','BR','A','IMG','SMALL','H1','H2','H3','UL','OL','LI']);
- function clean(node){
-  if(node.nodeType===Node.TEXT_NODE)return document.createTextNode(node.textContent);
-  if(node.nodeType!==Node.ELEMENT_NODE)return document.createDocumentFragment();
-  if(!allowed.has(node.tagName)){const frag=document.createDocumentFragment();node.childNodes.forEach(c=>frag.append(clean(c)));return frag}
-  const el=document.createElement(node.tagName.toLowerCase());
-  if(node.classList.contains('video'))el.className='draft-video';
-  if(node.tagName==='IMG'&&/^(data:image\/(png|jpeg|webp);base64,|https:\/\/)/i.test(node.getAttribute('src')||'')){el.src=node.getAttribute('src');el.alt='Video thumbnail'}
-  if(node.tagName==='A'){const url=safeExternalUrl(node.getAttribute('href'));if(url){el.href=url;el.rel='noopener noreferrer'} }
-  if(node.hasAttribute('style')){const style=node.style;for(const prop of ['font-weight','font-style','font-size','font-family','color','text-decoration','text-align']){const value=style.getPropertyValue(prop);if(value&&!/[<>;{}]/.test(value))el.style.setProperty(prop,value)}}
-  node.childNodes.forEach(c=>el.append(clean(c)));
-  return el;
- }
- source.childNodes.forEach(c=>layer.append(clean(c)));
- layer.querySelectorAll('.draft-video a[href]').forEach(a=>{
-  a.addEventListener('click',ev=>{
-   ev.preventDefault();ev.stopPropagation();
-   const url=a.getAttribute('href'),source=inlineVideoSource('youtube-link',url);
-   const vimeo=videoEmbed(url);
-   const mp4=/^https:\/\/[^\s]+\.mp4(?:\?[^\s]*)?$/i.test(url)?url:null;
-   const player=document.createElement(mp4?'video':'iframe');
-   if(mp4){player.src=mp4;player.controls=true;player.autoplay=true;player.playsInline=true}
-   else if(source){player.src=source.url}
-   else if(vimeo){player.src=vimeo+(vimeo.includes('?')?'&':'?')+'autoplay=1'}
-   else return;
-   if(!mp4){player.allow='autoplay; encrypted-media; picture-in-picture; fullscreen';player.allowFullscreen=true}
-   player.className='draft-video-player inline-video-player';
-   a.replaceWith(player);
-  });
- });
- return layer;
-}
-// Pause media on pages that leave the visible spread; do not rebuild the viewer.
-function pauseHiddenMedia(){
-const visible=new Set([book.view.left,book.view.right].filter(Boolean).map(indexOf).filter(i=>i!==null));
-document.querySelectorAll('.inline-video-player').forEach(player=>{
-const pageSlot=player.closest('[data-flipbook-page-index]');
-if(!pageSlot||visible.has(Number(pageSlot.dataset.flipbookPageIndex)))return;
-if(player.tagName==='VIDEO'){player.pause();return}
-if(player.tagName==='IFRAME'&&player.contentWindow)player.contentWindow.postMessage(JSON.stringify({event:'command',func:'pauseVideo',args:[]}), 'https://www.youtube-nocookie.com');
-});
 }
 const first=(await pdf.getPage(1)).getViewport({scale:1});
 const cache=new Map();
@@ -175,24 +76,12 @@ const i=indexOf(page);return i===null||i>=count?null:canvasFor(i);
 const sound=createPageTurnSound({takes:defaultPageTurnTakes});
 const book=new Grabfold(document.getElementById("book"),{
 sheets:Math.ceil(count/2),covers:"none",pageRatio:first.width/first.height,
-foldRenderer:showCurl?curl:null,sound,gestures:manualTurn,flick:false,grabBlock:false,commitAt:0.5,render(slot,page){
+foldRenderer:curl,sound,render(slot,page){
 const i=indexOf(page);if(i===null||i>=count)return;
-let disposed=false;slot.dataset.flipbookPageIndex=String(i);
-void canvasFor(i).then(async canvas=>{
-if(disposed)return;
-slot.append(canvas);
-const hasDraft=i>0&&typeof textDrafts[i+1]==="string";
-// Keep the uploaded PDF as the visible page. Text drafts remain saved separately.\n// Replacing the PDF with extracted text changes its layout and obscures video hotspots.
-// A replacement text draft owns its page; PDF annotations belong to the original PDF.
-try{await addPdfLinks(slot,i)}catch(e){console.warn('PDF links unavailable on page '+(i+1),e)}
-if(!disposed)addOverlays(slot,i);
-}).catch(e=>{console.error(e)});
-return ()=>{disposed=true;slot.querySelectorAll('video').forEach(v=>v.pause());slot.replaceChildren()};
+let disposed=false;
+void canvasFor(i).then(canvas=>{if(!disposed){slot.append(canvas);addOverlays(slot,i)}}).catch(e=>{console.error(e)});
+return ()=>{disposed=true;slot.replaceChildren()};
 }});
-const jumpHistory=[];
-function currentPdfPage(){const pages=[book.view.left,book.view.right].filter(Boolean).map(p=>indexOf(p)).filter(i=>i!==null&&i<count);return pages.length?Math.min(...pages)+1:1}
-function jumpToPdfPage(page,remember=true){if(!Number.isInteger(page)||page<1||page>count)return;const from=currentPdfPage();if(remember&&from!==page)jumpHistory.push(from);book.jumpTo(Math.max(0,Math.floor((page-2)/2)));document.getElementById('jumpControls').hidden=jumpHistory.length===0}
-document.getElementById('jumpBack').onclick=()=>{const page=jumpHistory.pop();if(page!==undefined)jumpToPdfPage(page,false);document.getElementById('jumpControls').hidden=jumpHistory.length===0};
 function update(){
 const {left,right}=book.view;
 const pages=[left,right].filter(Boolean).map(p=>indexOf(p)).filter(i=>i!==null&&i<count).map(i=>i+1);
@@ -200,26 +89,13 @@ document.getElementById("where").textContent=pages.length?`Page ${pages.join("�
 document.getElementById("prev").disabled=!book.canPrev();
 document.getElementById("next").disabled=!book.canNext();
 }
-book.on("change",()=>{update();pauseHiddenMedia()});update();
+book.on("change",update);update();
 document.getElementById("prev").onclick=()=>book.prev();
 document.getElementById("next").onclick=()=>book.next();
-document.getElementById("firstPage").onclick=()=>book.jumpTo(0);
-document.getElementById("lastPage").onclick=()=>book.jumpTo(Math.max(0,Math.ceil(count/2)-1));
-const curlInput=document.getElementById("curl");document.getElementById("curlSetting").hidden=!showCurl;curlInput.disabled=!curl;curlInput.checked=showCurl&&!!curl;
+const curlInput=document.getElementById("curl");curlInput.disabled=!curl;curlInput.checked=!!curl;
 curlInput.onchange=e=>book.setOptions({foldRenderer:e.target.checked?curl:null});
 document.getElementById("sound").onchange=e=>sound.muted=!e.target.checked;
-const manualInput={checked:manualTurn};
-const bookElement=document.getElementById("book");
-// Keep clicks on links and videos working while blocking drag gestures when disabled.
-for(const eventName of ['pointerdown','pointermove','pointerup','touchstart','touchmove','touchend','mousedown','mousemove','mouseup']){
-bookElement.addEventListener(eventName,event=>{
-if(manualInput.checked)return;
-if(event.target.closest('a,button,input,video,iframe'))return;
-event.stopPropagation();
-},true);
-}
-
-status.textContent=manualTurn?"Use the side arrows or drag a page to turn.":"Use the side arrows to turn pages.";
+status.textContent="Drag a page to turn it, or use the arrows.";
 } catch(e){status.textContent="Unable to open the flipbook.";error.textContent=e.message;console.error(e)}
 </script>
 </body></html>
